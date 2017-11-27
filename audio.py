@@ -9,12 +9,12 @@ import numpy as np
 from scipy import signal
 
 
-def read(path, sr, duration=None, mono=True):
+def read_wav(path, sr, duration=None, mono=True):
     wav, _ = librosa.load(path, mono=mono, sr=sr, duration=duration)
     return wav
 
 
-def write(wav, sr, path, format='wav', subtype='PCM_16'):
+def write_wav(wav, sr, path, format='wav', subtype='PCM_16'):
     sf.write(path, wav, sr, format=format, subtype=subtype)
 
 
@@ -30,7 +30,33 @@ def rewrite_mp3_to_wav(source_path, target_path):
     AudioSegment.from_mp3(source_path).export(target_path, format='wav')
 
 
+
+
+def wav2spectrogram(wav, n_fft, win_length, hop_length):
+    '''
+    
+    :param wav: 
+    :param n_fft: 
+    :param win_length: 
+    :param hop_length: 
+    :return: (1 + n_fft/2, t)
+    '''
+    spec = librosa.stft(y=wav, n_fft=n_fft, hop_length=hop_length, win_length=win_length)
+    return np.abs(spec), np.angle(spec)
+
+
 def spectrogram2wav(mag, n_fft, win_length, hop_length, num_iters, phase_angle=None, length=None):
+    '''
+    
+    :param mag: shape=(1 + n_fft/2, t)
+    :param n_fft: 
+    :param win_length: 
+    :param hop_length: 
+    :param num_iters: 
+    :param phase_angle: 
+    :param length: 
+    :return: 
+    '''
     assert (num_iters > 0)
     if phase_angle is None:
         phase_angle = np.pi * np.random.rand(*mag.shape)
@@ -59,13 +85,13 @@ def split(wav, top_db):
     return wavs
 
 
-def wav_random_crop(wav, sr, duration):
-    assert (wav.ndim <= 2)
+def wav_random_crop(wav, length):
+    assert(wav.ndim <= 2)
+    assert(type(length) == int)
 
-    target_len = sr * duration
     wav_len = wav.shape[-1]
-    start = np.random.choice(range(np.maximum(1, wav_len - target_len)), 1)[0]
-    end = start + target_len
+    start = np.random.choice(range(np.maximum(1, wav_len - length)), 1)[0]
+    end = start + length
     if wav.ndim == 1:
         wav = wav[start:end]
     else:
