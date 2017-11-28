@@ -4,16 +4,6 @@
 import yaml
 # import pprint
 
-# path
-## local
-data_path_base = './datasets'
-# logdir_path = './logdir'
-
-## remote
-# data_path_base = '/data/private/vc/datasets'
-logdir_path = '/data/private/vc/logdir'
-
-
 
 def load_hparam(filename):
     stream = open(filename, 'r')

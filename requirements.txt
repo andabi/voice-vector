@@ -2,4 +2,6 @@ tensorflow >= 1.1
 numpy >= 1.11.1
 librosa == 0.5.1
 soundfile
+pydub
 tqdm
+pyyaml

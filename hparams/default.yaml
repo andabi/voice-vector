@@ -1,5 +1,7 @@
 ---
-# Signal Processing
+data_load:
+  num_threads: 64
+
 signal:
   sr: 16000
   duration: 0.5
@@ -9,28 +11,27 @@ signal:
 
 model:
   num_banks: 16
-  hidden_units: 256
+  hidden_units: 512
   num_highway: 4
   norm_type: 'ins'
-  embedding_size: 128
+  embedding_size: 256
 
 # Path
-logdir_path: 'logdir'
-
-# model
+logdir_path: '/data/private/voice-vector/logdir'
+#logdir_path: 'logdir'
 
 train:
-    # path
-    data_path: '/Users/avin/git/voice-vector/datasets/vcc2016_training'
+  # path
+  data_path: 'datasets/vcc2016_training'
 
-    # train
-    batch_size: 2
-    lr: 0.0003
-    num_steps: 100000
-    save_per_step: 1000
+  # train
+  batch_size: 32
+  lr: 0.0005
+  num_steps: 100000
+  save_per_step: 1000
 eval:
-    # path
-    data_path: '/Users/avin/git/voice-vector/datasets/vcc2016_training'
+  # path
+  data_path: 'datasets/vcc2016_training'
 
-    # test
-    batch_size: 1
+  # test
+  batch_size: 1

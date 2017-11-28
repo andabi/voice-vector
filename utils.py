@@ -13,4 +13,3 @@ def split_path(path):
     basepath, filename = os.path.split(path)
     filename, extension = os.path.splitext(filename)
     return basepath, filename, extension
-

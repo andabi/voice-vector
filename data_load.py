@@ -7,11 +7,13 @@ import os
 import random
 
 import tensorflow as tf
+from hparam import Hparam
 
 from audio import read_wav, wav_random_crop, wav2spectrogram
 
 
 class DataLoader:
+
     def __init__(self, data_path, sr, duration, n_fft, win_length, hop_length, batch_size):
         self.data_path = data_path
         self.sr = sr
@@ -43,15 +45,19 @@ class DataLoader:
         return randomly_cropped_wav
 
     def get_batch_queue(self):
+        hp = Hparam.get_global_hparam()
+
         speaker_names = tf.convert_to_tensor(self.speaker_names)
         speaker_name = tf.train.slice_input_producer([speaker_names], shuffle=True)
         spec, spec_pos, spec_neg = tf.py_func(self.load_triplet, speaker_name, (tf.float32, tf.float32, tf.float32))
-        spec_batch, spec_pos_batch, spec_neg_batch = tf.train.batch([spec, spec_pos, spec_neg], shapes=[
-            (self.length_spec, self.n_fft // 2 + 1), (self.length_spec, self.n_fft // 2 + 1),
-            (self.length_spec, self.n_fft // 2 + 1)],
-                                                                    num_threads=32,
+        spec_batch, spec_pos_batch, spec_neg_batch = tf.train.batch([spec, spec_pos, spec_neg],
+                                                                    shapes=[
+                                                                        (self.length_spec, self.n_fft // 2 + 1),
+                                                                        (self.length_spec, self.n_fft // 2 + 1),
+                                                                        (self.length_spec, self.n_fft // 2 + 1)],
+                                                                    num_threads=hp.data_load.num_threads,
                                                                     batch_size=self.batch_size,
-                                                                    capacity=self.batch_size * 32,
+                                                                    capacity=self.batch_size * hp.data_load.num_threads,
                                                                     dynamic_pad=False)  # no padding
         return spec_batch, spec_pos_batch, spec_neg_batch  # (n, t, 1 + n_fft/2)
 

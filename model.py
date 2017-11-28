@@ -60,17 +60,24 @@ class Model:
         out = tf.layers.dense(out, self.embedding_size)  # (n, t, e)
 
         # Average on frames
-        out = tf.reduce_mean(out, axis=1)  # (n, e)
+        out = tf.reduce_mean(out, axis=1, name='embedding')  # (n, e)
 
         return out
 
     def loss(self):
-        # embed_x = self.embedding(self.x)
-        # embed_x_pos = self.embedding(self.x_pos)
-        # embed_x_neg = self.embedding(self.x_neg)
-        # triplet_loss = tf.losses.cosine_distance(embed_x, embed_x_pos, dim=1) - tf.losses.cosine_distance(embed_x, embed_x_neg, dim=1)
-        triplet_loss = tf.losses.cosine_distance(self.y, self.y_pos, dim=1) - tf.losses.cosine_distance(self.y, self.y_neg, dim=1)
-        return triplet_loss  # (n, e)
+        def cosine_sim(x1, x2, axis, name='cosine_similarity'):
+            with tf.name_scope(name):
+                x1_val = tf.sqrt(tf.reduce_sum(tf.matmul(x1, tf.transpose(x1)), axis=axis))
+                x2_val = tf.sqrt(tf.reduce_sum(tf.matmul(x2, tf.transpose(x2)), axis=axis))
+                denom = tf.multiply(x1_val, x2_val)
+                num = tf.reduce_sum(tf.multiply(x1, x2), axis=axis)
+                return tf.div(num, denom)
+
+        cs_pos = cosine_sim(self.y, self.y_pos, axis=1)
+        cs_neg = cosine_sim(self.y, self.y_neg, axis=1)
+        triplet_loss = tf.maximum(0., cs_pos - cs_neg + 0.2)  # (n, e)
+        loss = tf.reduce_mean(triplet_loss)
+        return loss
 
     @staticmethod
     def load(sess, logdir):
@@ -92,15 +99,6 @@ class Model:
         else:
             model_name = None
         return model_name
-
-    @staticmethod
-    def get_global_step(logdir):
-        model_name = Model.get_model_name(logdir)
-        gs = 0
-        if model_name:
-            tokens = model_name.split('_')
-            gs = int(tokens[1])
-        return gs
 
     @staticmethod
     def all_model_names(logdir):

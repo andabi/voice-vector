@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python
+# !/usr/bin/env python
 
 
 from data_load import DataLoader
@@ -8,6 +8,8 @@ import tensorflow as tf
 from hparam import Hparam
 import argparse
 from tqdm import tqdm
+from tensorflow.contrib.tensorboard.plugins import projector
+import os
 
 
 def train():
@@ -23,8 +25,7 @@ def train():
     loss_op = model.loss()
 
     # Training
-    gs = model.get_global_step(hp.logdir_path)
-    global_step = tf.Variable(gs, name='global_step', trainable=False)
+    global_step = tf.Variable(0, name='global_step', trainable=False)
 
     optimizer = tf.train.AdamOptimizer(learning_rate=hp.train.lr)
     train_op = optimizer.minimize(loss_op, global_step=global_step)
@@ -44,24 +45,30 @@ def train():
         model.load(sess, logdir=hp.logdir)
 
         writer = tf.summary.FileWriter(hp.logdir)
+        saver = tf.train.Saver()
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
 
-        for step in tqdm(range(gs + 1, hp.train.num_steps + 1), leave=False, unit='step'):
+        for step in tqdm(range(global_step.eval() + 1, hp.train.num_steps + 1), leave=False, unit='step'):
             sess.run(train_op)
 
+            # Write checkpoint files at every step
+            summ, gs = sess.run([summ_op, global_step])
+
             if step % hp.train.save_per_step == 0:
+                saver.save(sess, os.path.join(hp.logdir, "model.ckpt"), global_step=gs)
 
-                # Write checkpoint files at every n step
-                summ, gs = sess.run([summ_op, global_step])
-
-                tf.train.Saver().save(sess, '{}/step_{}'.format(hp.logdir, gs))
+                # Write embeddings
+                config = projector.ProjectorConfig()
+                embedding_conf = config.embeddings.add()
+                embedding_conf.tensor_name = model.y.name
+                projector.visualize_embeddings(writer, config)
 
                 # Write eval accuracy at every n step
                 # with tf.Graph().as_default():
-                    # eval(logdir=logdir, queue=False, writer=writer)
+                # eval(logdir=logdir, queue=False, writer=writer)
 
-                writer.add_summary(summ, global_step=gs)
+            writer.add_summary(summ, global_step=gs)
 
         writer.close()
         coord.request_stop()
@@ -73,6 +80,7 @@ def get_arguments():
     parser.add_argument('case', type=str, help='experiment case name')
     arguments = parser.parse_args()
     return arguments
+
 
 if __name__ == '__main__':
     args = get_arguments()
