@@ -10,6 +10,8 @@ import tensorflow as tf
 from hparam import Hparam
 
 from audio import read_wav, wav_random_crop, wav2spectrogram
+import numpy as np
+import sys
 
 
 class DataLoader:
@@ -33,9 +35,17 @@ class DataLoader:
         wav = self._get_random_wav(speaker_name)
         wav_pos = self._get_random_wav(speaker_name)
         wav_neg = self._get_random_wav(the_other_speaker_name)
+
+        # wav to spectrogram
         spec, _ = wav2spectrogram(wav, self.n_fft, self.win_length, self.hop_length)
         spec_pos, _ = wav2spectrogram(wav_pos, self.n_fft, self.win_length, self.hop_length)
         spec_neg, _ = wav2spectrogram(wav_neg, self.n_fft, self.win_length, self.hop_length)
+
+        # log
+        spec = np.log(spec + sys.float_info.epsilon)
+        spec_pos = np.log(spec_pos + sys.float_info.epsilon)
+        spec_neg = np.log(spec_neg + sys.float_info.epsilon)
+
         return spec.T, spec_pos.T, spec_neg.T  # (t, 1 + n_fft/2)
 
     def _get_random_wav(self, speaker_name):

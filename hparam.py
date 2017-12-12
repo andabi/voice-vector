@@ -64,6 +64,7 @@ class Hparam():
 
     def set_as_global_hparam(self):
         Hparam.global_hparam = self.hparam
+        return Hparam.global_hparam
 
     @staticmethod
     def get_global_hparam():

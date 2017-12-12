@@ -2,6 +2,7 @@
 #!/usr/bin/env python
 
 import os
+import glob
 
 
 def split_path(path):
@@ -13,3 +14,9 @@ def split_path(path):
     basepath, filename = os.path.split(path)
     filename, extension = os.path.splitext(filename)
     return basepath, filename, extension
+
+
+def remove_all_files(prefix):
+    files = glob.glob(prefix + '*')
+    for f in files:
+        os.remove(f)

@@ -1,0 +1,12 @@
+---
+batch_1:
+  train:
+    batch_size: 1
+---
+batch_2:
+  train:
+    batch_size: 2
+---
+batch_4:
+  train:
+    batch_size: 4

@@ -3,7 +3,8 @@
 
 import tensorflow as tf
 import os
-from modules import conv1d_banks, conv1d, normalize, highwaynet, prenet
+from modules import conv1d_banks, conv1d, normalize, highwaynet
+import sys
 
 
 class Model:
@@ -64,20 +65,20 @@ class Model:
 
         return out
 
-    def loss(self):
+    def loss(self, margin=0.2):
         def cosine_sim(x1, x2, axis, name='cosine_similarity'):
             with tf.name_scope(name):
                 x1_val = tf.sqrt(tf.reduce_sum(tf.matmul(x1, tf.transpose(x1)), axis=axis))
                 x2_val = tf.sqrt(tf.reduce_sum(tf.matmul(x2, tf.transpose(x2)), axis=axis))
-                denom = tf.multiply(x1_val, x2_val)
+                denom = tf.multiply(x1_val, x2_val) + sys.float_info.epsilon
                 num = tf.reduce_sum(tf.multiply(x1, x2), axis=axis)
                 return tf.div(num, denom)
 
-        cs_pos = cosine_sim(self.y, self.y_pos, axis=1)
-        cs_neg = cosine_sim(self.y, self.y_neg, axis=1)
-        triplet_loss = tf.maximum(0., cs_pos - cs_neg + 0.2)  # (n, e)
+        sim_pos = cosine_sim(self.y, self.y_pos, axis=1)
+        sim_neg = cosine_sim(self.y, self.y_neg, axis=1)
+        triplet_loss = tf.maximum(0., sim_neg - sim_pos + margin)  # (n, e)
         loss = tf.reduce_mean(triplet_loss)
-        return loss
+        return loss, sim_pos, sim_neg
 
     @staticmethod
     def load(sess, logdir):
