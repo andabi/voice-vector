@@ -35,9 +35,9 @@ train:
   clip_value_min: -5.
   clip_norm: 100
 
-eval:
+embed:
   # path
   data_path: 'datasets/vcc2016_training'
 
   # test
-  batch_size: 1
+  batch_size: 100

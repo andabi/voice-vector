@@ -24,7 +24,7 @@ class Model:
         self.embedding_size = embedding_size
 
         # Input
-        self.x, self.x_pos, self.x_neg = data_loader.get_batch_queue()  # (n, t, 1 + n_fft/2)
+        self.x, self.x_pos, self.x_neg, self.speaker_name = data_loader.get_batch_queue()  # (n, t, 1 + n_fft/2)
 
         # Networks
         self.net = tf.make_template('net', self.embedding)
@@ -33,7 +33,7 @@ class Model:
         self.y_neg = self.net(self.x_neg)  # (n, e)
 
     def __call__(self):
-        return self.y
+        return self.y, self.speaker_name
 
     def embedding(self, x):
         '''

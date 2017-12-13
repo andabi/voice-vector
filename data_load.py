@@ -58,18 +58,18 @@ class DataLoader:
         hp = Hparam.get_global_hparam()
 
         speaker_names = tf.convert_to_tensor(self.speaker_names)
-        speaker_name = tf.train.slice_input_producer([speaker_names], shuffle=True)
-        spec, spec_pos, spec_neg = tf.py_func(self.load_triplet, speaker_name, (tf.float32, tf.float32, tf.float32))
-        spec_batch, spec_pos_batch, spec_neg_batch = tf.train.batch([spec, spec_pos, spec_neg],
+        speaker_name = tf.train.slice_input_producer([speaker_names], shuffle=True)[0]
+        spec, spec_pos, spec_neg = tf.py_func(self.load_triplet, [speaker_name], (tf.float32, tf.float32, tf.float32))
+        spec_batch, spec_pos_batch, spec_neg_batch, speaker_name_batch = tf.train.batch([spec, spec_pos, spec_neg, speaker_name],
                                                                     shapes=[
                                                                         (self.length_spec, self.n_fft // 2 + 1),
                                                                         (self.length_spec, self.n_fft // 2 + 1),
-                                                                        (self.length_spec, self.n_fft // 2 + 1)],
+                                                                        (self.length_spec, self.n_fft // 2 + 1), ()],
                                                                     num_threads=hp.data_load.num_threads,
                                                                     batch_size=self.batch_size,
                                                                     capacity=self.batch_size * hp.data_load.num_threads,
                                                                     dynamic_pad=False)  # no padding
-        return spec_batch, spec_pos_batch, spec_neg_batch  # (n, t, 1 + n_fft/2)
+        return spec_batch, spec_pos_batch, spec_neg_batch, speaker_name_batch  # (n, t, 1 + n_fft/2)
 
     def get_batch(self):
         pass
