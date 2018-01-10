@@ -3,7 +3,7 @@
 
 import tensorflow as tf
 import os
-from modules import conv1d_banks, conv1d, normalize, highwaynet
+from modules import conv1d_banks, conv1d, normalize, highwaynet, gru
 import sys
 
 
@@ -24,7 +24,8 @@ class Model:
         self.embedding_size = embedding_size
 
         # Input
-        self.x, self.x_pos, self.x_neg, self.speaker_name = data_loader.get_batch_queue()  # (n, t, 1 + n_fft/2)
+        self.x, self.x_pos, self.x_neg, self.speaker_name = data_loader.get_batch_queue()  # (n, t, n_mels)
+        # self.x, self.x_pos, self.x_neg, self.speaker_name = data_loader.get_batch_placeholder()  # (n, t, n_mels)
 
         # Networks
         self.net = tf.make_template('net', self.embedding)
@@ -38,7 +39,7 @@ class Model:
     def embedding(self, x):
         '''
         
-        :param x: (n, t, 1 + n_fft/2)
+        :param x: (n, t, n_mels)
         :return: (n, e)
         '''
 
@@ -58,10 +59,12 @@ class Model:
         for i in range(self.num_highway):
             out = highwaynet(out, num_units=self.hidden_units, scope='highwaynet_{}'.format(i))  # (n, t, h)
 
-        out = tf.layers.dense(out, self.embedding_size)  # (n, t, e)
+        out = gru(out, self.hidden_units, False)  # (n, t, h)
 
-        # Average on frames
-        out = tf.reduce_mean(out, axis=1, name='embedding')  # (n, e)
+        # Take the last output
+        out = out[..., -1]  # (n, h)
+
+        out = tf.layers.dense(out, self.embedding_size)  # (n, e)
 
         return out
 

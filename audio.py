@@ -30,6 +30,14 @@ def rewrite_mp3_to_wav(source_path, target_path):
     AudioSegment.from_mp3(source_path).export(target_path, format='wav')
 
 
+def linear_to_mel(magnitude, sr, n_fft, n_mels):
+    mel_basis = librosa.filters.mel(sr, n_fft, n_mels)  # (n_mels, 1+n_fft//2)
+    mel = np.dot(mel_basis, magnitude)  # (n_mels, t) # mel spectrogram
+    return mel
+
+
+def amp_to_db(amp):
+    return librosa.amplitude_to_db(amp)
 
 
 def wav2spectrogram(wav, n_fft, win_length, hop_length):

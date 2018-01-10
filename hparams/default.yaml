@@ -4,17 +4,18 @@ data_load:
 
 signal:
   sr: 16000
-  duration: 0.1
+  duration: 0.5
   win_length: 400
   hop_length: 80
   n_fft: 512
+  n_mels: 80
 
 model:
-  num_banks: 16
-  hidden_units: 512
-  num_highway: 8
+  num_banks: 8
+  hidden_units: 128
+  num_highway: 2
   norm_type: 'ins'
-  embedding_size: 256
+  embedding_size: 64
 
 # Path
 logdir_path: '/data/private/voice-vector/logdir'

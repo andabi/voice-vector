@@ -13,7 +13,7 @@ import os
 from utils import remove_all_files
 
 
-def train():
+def train(queue=True):
     hp = Hparam.get_global_hparam()
 
     # Data loader
@@ -67,10 +67,12 @@ def train():
         threads = tf.train.start_queue_runners(coord=coord)
 
         for step in tqdm(range(global_step.eval() + 1, hp.train.num_steps + 1), leave=False, unit='step'):
-            sess.run(train_op)
+            feed_dict = {}
+            if not queue:
+                feed_dict = dict(zip((model.x, model.x_pos, model.x_neg, model.speaker_name), data_loader.get_batch()))
 
             # Write checkpoint files at every step
-            summ, gs = sess.run([summ_op, global_step])
+            _, summ, gs = sess.run([train_op, summ_op, global_step], feed_dict=feed_dict)
 
             if step % hp.train.save_per_step == 0:
                 saver.save(sess, os.path.join(hp.logdir, hp.train.ckpt_prefix), global_step=gs)
@@ -95,7 +97,8 @@ def train():
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('case', type=str, help='experiment case name.')
-    parser.add_argument('-r', action='store_true', help='start training from the beginning.')
+    parser.add_argument('--r', action='store_true', help='start training from the beginning.')
+    parser.add_argument('--no-queue', action='store_true', help='run without queue for debugging.')
     arguments = parser.parse_args()
     return arguments
 
@@ -113,6 +116,10 @@ if __name__ == '__main__':
             remove_all_files(os.path.join(hp.logdir, 'events.out'))
             remove_all_files(os.path.join(hp.logdir, hp.train.ckpt_prefix))
 
-    train()
+    queue = True
+    if args.no_queue:
+        queue = False
+
+    train(queue=queue)
 
     print("Done")
