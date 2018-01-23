@@ -4,7 +4,7 @@ data_load:
 
 signal:
   sr: 16000
-  duration: 0.5
+  duration: 1
   win_length: 400
   hop_length: 80
   n_fft: 512
@@ -18,8 +18,8 @@ model:
   embedding_size: 64
 
 # Path
-logdir_path: '/data/private/voice-vector/logdir'
-#logdir_path: 'logdir'
+#logdir_path: '/data/private/voice-vector/logdir'
+logdir_path: 'logdir'
 
 train:
   # path
@@ -27,7 +27,7 @@ train:
   ckpt_prefix: 'model.ckpt'
 
   # train
-  batch_size: 32
+  batch_size: 10
   margin: 0.2
   lr: 0.00005
   num_steps: 10000000
@@ -41,4 +41,4 @@ embed:
   data_path: 'datasets/vcc2016_training'
 
   # test
-  batch_size: 100
+  batch_size: 1000

@@ -2,7 +2,6 @@
 #!/usr/bin/env python
 
 import yaml
-# import pprint
 
 
 def load_hparam(filename):
@@ -37,38 +36,33 @@ class Dotdict(dict):
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
-    def __init__(self, dct):
+    def __init__(self, dct=None):
+        dct = dict() if not dct else dct
         for key, value in dct.items():
             if hasattr(value, 'keys'):
                 value = Dotdict(value)
             self[key] = value
 
 
-class Hparam():
-    default_hparam_file = 'hparams/default.yaml'
-    user_hparams_file = 'hparams/hparams.yaml'
-    global_hparam = None
+class Hparam(Dotdict):
 
-    def __init__(self, case):
-        default_hp = load_hparam(Hparam.default_hparam_file)
-        user_hp = load_hparam(Hparam.user_hparams_file)
-        if case in user_hp:
-            hp = merge_dict(user_hp[case], default_hp)
-        else:
-            hp = default_hp
-        self.hparam = Dotdict(hp)
-        self.hparam.logdir = '{}/{}'.format(self.hparam.logdir_path, case)  # set logdir to [logdir_path]/[case]
+    def __init__(self):
+        super(Dotdict, self).__init__()
 
-    def __call__(self):
-        return self.hparam
+    __getattr__ = Dotdict.__getitem__
+    __setattr__ = Dotdict.__setitem__
+    __delattr__ = Dotdict.__delitem__
 
-    def set_as_global_hparam(self):
-        Hparam.global_hparam = self.hparam
-        return Hparam.global_hparam
+    def set_hparam_yaml(self, case, default_file='hparams/default.yaml', user_file='hparams/hparams.yaml'):
+        default_hp = load_hparam(default_file)
+        user_hp = load_hparam(user_file)
+        hp_dict = Dotdict(merge_dict(user_hp[case], default_hp) if case in user_hp else default_hp)
+        for k, v in hp_dict.items():
+            setattr(self, k, v)
+        self._auto_setting(case)
 
-    @staticmethod
-    def get_global_hparam():
-        return Hparam.global_hparam
+    def _auto_setting(self, case):
+        # logdir for a case is automatically set to [logdir_path]/[case]
+        setattr(self, 'logdir', '{}/{}'.format(hparam.logdir_path, case))
 
-# pp = pprint.PrettyPrinter(indent=4)
-# pp.pprint(hparam)
+hparam = Hparam()

@@ -69,7 +69,7 @@ def train(queue=True):
         for step in tqdm(range(global_step.eval() + 1, hp.train.num_steps + 1), leave=False, unit='step'):
             feed_dict = {}
             if not queue:
-                feed_dict = dict(zip((model.x, model.x_pos, model.x_neg, model.speaker_name), data_loader.get_batch()))
+                feed_dict = dict(zip((model.x, model.x_pos, model.x_neg, model.speaker_id), data_loader.get_batch()))
 
             # Write checkpoint files at every step
             _, summ, gs = sess.run([train_op, summ_op, global_step], feed_dict=feed_dict)

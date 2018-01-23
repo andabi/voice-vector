@@ -16,3 +16,8 @@ batch_4:
     batch_size: 4
   embed:
     batch_size: 1000
+random:
+  signal:
+    duration: 0.5
+  model:
+    embedding_size: 10
