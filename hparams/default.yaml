@@ -18,8 +18,8 @@ model:
   embedding_size: 64
 
 # Path
-#logdir_path: '/data/private/voice-vector/logdir'
 logdir_path: 'logdir'
+#logdir_path: '/data/private/voice-vector/logdir'
 
 train:
   # path
