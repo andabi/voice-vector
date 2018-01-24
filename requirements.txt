@@ -1,7 +1,7 @@
 tensorflow >= 1.1
 numpy >= 1.11.1
+tensorpack == 0.8.0
 librosa == 0.5.1
+pyyaml
 soundfile
 pydub
-tqdm
-pyyaml

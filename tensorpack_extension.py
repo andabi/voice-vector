@@ -17,13 +17,6 @@ class FlexibleQueueInput(QueueInput):
     """
 
     def __init__(self, ds, capacity=1000):
-        """
-        Args:
-            ds(DataFlow): the input DataFlow.
-            queue (tf.QueueBase): A :class:`tf.QueueBase` whose type
-                should match the corresponding InputDesc of the model.
-                Defaults to a FIFO queue of size 50.
-        """
         super(FlexibleQueueInput, self).__init__(ds)
         self.capacity = capacity
 

@@ -6,36 +6,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 
-def embed(inputs, vocab_size, num_units, zero_pad=True, scope="embedding", reuse=None):
-    '''Embeds a given tensor. 
-    
-    Args:
-      inputs: A `Tensor` with type `int32` or `int64` containing the ids
-         to be looked up in `lookup table`.
-      vocab_size: An int. Vocabulary size.
-      num_units: An int. Number of embedding hidden units.
-      zero_pad: A boolean. If True, all the values of the fist row (id 0)
-        should be constant zeros.
-      scope: Optional scope for `variable_scope`.  
-      reuse: Boolean, whether to reuse the weights of a previous layer
-        by the same name.
-        
-    Returns:
-      A `Tensor` with one more rank than inputs's. The last dimesionality
-        should be `num_units`.
-    '''
-    with tf.variable_scope(scope, reuse=reuse):
-        lookup_table = tf.get_variable('lookup_table', 
-                                       dtype=tf.float32, 
-                                       shape=[vocab_size, num_units],
-                                       initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.01))
-        if zero_pad:
-            lookup_table = tf.concat((tf.zeros(shape=[1, num_units]), 
-                                      lookup_table[1:, :]), 0)
-    return tf.nn.embedding_lookup(lookup_table, inputs)   
-
-
-def normalize(inputs, 
+def normalize(inputs,
               type="bn",
               decay=.999,
               epsilon=1e-8,
@@ -113,9 +84,7 @@ def normalize(inputs,
             params_shape = inputs_shape[-1:]
 
             mean, variance = tf.nn.moments(inputs, [reduction_axis], keep_dims=True)
-            # beta = tf.Variable(tf.zeros(params_shape))
             beta = tf.get_variable("beta", shape=params_shape, initializer=tf.zeros_initializer)
-            # gamma = tf.Variable(tf.ones(params_shape))
             gamma = tf.get_variable("gamma", shape=params_shape, initializer=tf.ones_initializer)
             normalized = (inputs - mean) / ( (variance + epsilon) ** (.5) )
             outputs = gamma * normalized + beta
@@ -227,57 +196,6 @@ def gru(inputs, num_units=None, bidirection=False, seqlens=None, scope="gru", re
             return outputs
 
 
-def attention_decoder(inputs, memory, seqlens=None, num_units=None, scope="attention_decoder", reuse=None):
-    '''Applies a GRU to `inputs`, while attending `memory`.
-    Args:
-      inputs: A 3d tensor with shape of [N, T', C']. Decoder inputs.
-      memory: A 3d tensor with shape of [N, T, C]. Outputs of encoder network.
-      seqlens: A 1d tensor with shape of [N,], dtype of int32.
-      num_units: An int. Attention size.
-      scope: Optional scope for `variable_scope`.  
-      reuse: Boolean, whether to reuse the weights of a previous layer
-        by the same name.
-    
-    Returns:
-      A 3d tensor with shape of [N, T, num_units].    
-    '''
-    with tf.variable_scope(scope, reuse=reuse):
-        if num_units is None:
-            num_units = inputs.get_shape().as_list[-1]
-        
-        attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units, 
-                                                                   memory, 
-                                                                   memory_sequence_length=seqlens, 
-                                                                   normalize=True,
-                                                                   probability_fn=tf.nn.softmax)
-        decoder_cell = tf.contrib.rnn.GRUCell(num_units)
-        cell_with_attention = tf.contrib.seq2seq.AttentionWrapper(decoder_cell, attention_mechanism, num_units)
-        outputs, _ = tf.nn.dynamic_rnn(cell_with_attention, inputs, 
-                                       dtype=tf.float32) #( N, T', 16)
-    return outputs
-
-
-def prenet(inputs, num_units=None, dropout_rate=0., is_training=True, scope="prenet", reuse=None):
-    '''Prenet for Encoder and Decoder.
-    Args:
-      inputs: A 3D tensor of shape [N, T, hp.embed_size].
-      is_training: A boolean.
-      scope: Optional scope for `variable_scope`.  
-      reuse: Boolean, whether to reuse the weights of a previous layer
-        by the same name.
-        
-    Returns:
-      A 3D tensor of shape [N, T, num_units/2].
-    '''
-    with tf.variable_scope(scope, reuse=reuse):
-        outputs = tf.layers.dense(inputs, units=num_units[0], activation=tf.nn.relu, name="dense1")
-        outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=is_training, name="dropout1")
-        outputs = tf.layers.dense(outputs, units=num_units[1], activation=tf.nn.relu, name="dense2")
-        outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=is_training, name="dropout2")
-
-    return outputs # (N, T, num_units/2)
-
-
 def highwaynet(inputs, num_units=None, scope="highwaynet", reuse=None):
     '''Highway networks, see https://arxiv.org/abs/1505.00387
 
@@ -301,26 +219,3 @@ def highwaynet(inputs, num_units=None, scope="highwaynet", reuse=None):
         C = 1. - T
         outputs = H * T + inputs * C
     return outputs
-
-
-def cbhg(input, num_banks, hidden_units, num_highway_blocks, norm_type='bn', is_training=True, scope="cbhg"):
-    with tf.variable_scope(scope):
-        out = conv1d_banks(input,
-                           K=num_banks,
-                           num_units=hidden_units,
-                           norm_type=norm_type,
-                           is_training=is_training)  # (N, T, K * E / 2)
-
-        out = tf.layers.max_pooling1d(out, 2, 1, padding="same")  # (N, T, K * E / 2)
-
-        out = conv1d(out, hidden_units, 3, scope="conv1d_1")  # (N, T, E/2)
-        out = normalize(out, type=norm_type, is_training=is_training, activation_fn=tf.nn.relu)
-        out = conv1d(out, hidden_units, 3, scope="conv1d_2")  # (N, T, E/2)
-        out += input  # (N, T, E/2) # residual connections
-
-        for i in range(num_highway_blocks):
-            out = highwaynet(out, num_units=hidden_units,
-                             scope='highwaynet_{}'.format(i))  # (N, T, E/2)
-
-        out = gru(out, hidden_units, True)  # (N, T, E)
-    return out

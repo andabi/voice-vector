@@ -45,7 +45,13 @@ def split_wav(wav, top_db):
     return wavs
 
 
-def crop_random_wav(wav, length):
+def fix_length(wav, length):
+    if len(wav) != length:
+        wav = librosa.util.fix_length(wav, length)
+    return wav
+
+
+def get_random_crop(wav, length):
     """
     Randomly cropped a part in a wav file.
     :param wav: a waveform
@@ -62,6 +68,7 @@ def crop_random_wav(wav, length):
         wav = wav[start:end]
     else:
         wav = wav[:, start:end]
+
     return wav
 
 

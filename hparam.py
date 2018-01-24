@@ -62,6 +62,8 @@ class Hparam(Dotdict):
         self._auto_setting(case)
 
     def _auto_setting(self, case):
+        setattr(self, 'case', case)
+
         # logdir for a case is automatically set to [logdir_path]/[case]
         setattr(self, 'logdir', '{}/{}'.format(hparam.logdir_path, case))
 

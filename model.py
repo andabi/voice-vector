@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-# !/usr/bin/env python
+#!/usr/bin/env python
+
 
 import tensorflow as tf
-import os
+from tensorpack.graph_builder.model_desc import ModelDesc, InputDesc
+
+from hparam import hparam as hp
 from modules import conv1d_banks, conv1d, normalize, highwaynet, gru
-import sys
+from tensorpack.train.tower import get_current_tower_context
+from tensorpack.tfutils.scope_utils import auto_reuse_variable_scope
 
 
-class Model:
+class Model(ModelDesc):
     '''
     n = batch size
     t = timestep size
@@ -15,43 +19,32 @@ class Model:
     e = embedding size
     '''
 
-    def __init__(self, data_loader, num_banks, hidden_units, num_highway, norm_type, embedding_size, is_training):
-        self.is_training = is_training
+    def __init__(self, num_banks, hidden_units, num_highway, norm_type, embedding_size):
         self.num_banks = num_banks
         self.hidden_units = hidden_units
         self.num_highway = num_highway
         self.norm_type = norm_type
         self.embedding_size = embedding_size
 
-        # Input
-        self.x, self.x_pos, self.x_neg, self.speaker_id = data_loader.get_batch_queue()  # (n, t, n_mels)
-
-        # Networks
-        self.net = tf.make_template('net', self.embedding)
-        self.y = self.net(self.x)  # (n, e)
-        self.y_pos = self.net(self.x_pos)  # (n, e)
-        self.y_neg = self.net(self.x_neg)  # (n, e)
-
     def __call__(self):
         return self.y, self.speaker_id
 
-    def embedding(self, x):
-        '''
-        
-        :param x: (n, t, n_mels)
-        :return: (n, e)
-        '''
-
+    @auto_reuse_variable_scope
+    def embedding(self, x, is_training=False):
+        """
+        :param x: shape=(n, t, n_mels)
+        :return: embedding. shape=(n, e)
+        """
         # Frame-level embedding
-        x = tf.layers.dense(x, units=self.hidden_units, activation=tf.nn.relu)   # (n, t, h)
+        x = tf.layers.dense(x, units=self.hidden_units, activation=tf.nn.relu)  # (n, t, h)
 
         out = conv1d_banks(x, K=self.num_banks, num_units=self.hidden_units, norm_type=self.norm_type,
-                           is_training=self.is_training)  # (n, t, k * h)
+                           is_training=is_training)  # (n, t, k * h)
 
         out = tf.layers.max_pooling1d(out, 2, 1, padding="same")  # (n, t, k * h)
 
         out = conv1d(out, self.hidden_units, 3, scope="conv1d_1")  # (n, t, h)
-        out = normalize(out, type=self.norm_type, is_training=self.is_training, activation_fn=tf.nn.relu)
+        out = normalize(out, type=self.norm_type, is_training=is_training, activation_fn=tf.nn.relu)
         out = conv1d(out, self.hidden_units, 3, scope="conv1d_2")  # (n, t, h)
         out += x  # (n, t, h) # residual connections
 
@@ -63,49 +56,41 @@ class Model:
         # Take the last output
         out = out[..., -1]  # (n, h)
 
-        out = tf.layers.dense(out, self.embedding_size)  # (n, e)
+        # Final project for classification
+        out = tf.layers.dense(out, self.embedding_size, name="final_projection")  # (n, c)
+        out = tf.identity(out, name="embedding")
 
         return out
 
-    def loss(self, margin=0.2):
-        def cosine_sim(x1, x2, axis, name='cosine_similarity'):
-            with tf.name_scope(name):
-                x1_val = tf.sqrt(tf.reduce_sum(tf.matmul(x1, tf.transpose(x1)), axis=axis))
-                x2_val = tf.sqrt(tf.reduce_sum(tf.matmul(x2, tf.transpose(x2)), axis=axis))
-                denom = tf.multiply(x1_val, x2_val) + sys.float_info.epsilon
-                num = tf.reduce_sum(tf.multiply(x1, x2), axis=axis)
-                return tf.div(num, denom)
+    def loss(self):
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y, labels=self.speaker_id)
+        loss = tf.reduce_mean(loss)
+        return loss
 
-        sim_pos = cosine_sim(self.y, self.y_pos, axis=1)
-        sim_neg = cosine_sim(self.y, self.y_neg, axis=1)
-        triplet_loss = tf.maximum(0., sim_neg - sim_pos + margin)  # (n, e)
-        loss = tf.reduce_mean(triplet_loss)
-        return loss, sim_pos, sim_neg
+    def accuracy(self):
+        pred = tf.to_int32(tf.argmax(self.y, axis=1))
+        acc = tf.reduce_mean(tf.to_float(tf.equal(self.speaker_id, pred)), name='accuracy')
+        return acc
 
-    @staticmethod
-    def load(sess, logdir):
-        ckpt = tf.train.latest_checkpoint(logdir)
-        if ckpt:
-            tf.train.Saver().restore(sess, ckpt)
-            model_name = Model.get_model_name(logdir)
-            if model_name:
-                print('Model loaded: {}'.format(model_name))
-            else:
-                print('Model created.')
+    def _get_inputs(self):
+        length = hp.signal.duration * hp.signal.sr
+        length_spec = length // hp.signal.hop_length + 1
+        return [InputDesc(tf.float32, (None, length), 'wav'),
+                InputDesc(tf.float32, (None, length_spec, hp.signal.n_mels), 'x'),
+                InputDesc(tf.int32, (None,), 'speaker_id')]
 
-    @staticmethod
-    def get_model_name(logdir):
-        path = '{}/checkpoint'.format(logdir)
-        if os.path.exists(path):
-            ckpt_path = open(path, 'r').read().split('"')[1]
-            _, model_name = os.path.split(ckpt_path)
-        else:
-            model_name = None
-        return model_name
+    def _build_graph(self, inputs):
+        _, self.x, self.speaker_id = inputs
+        is_training = get_current_tower_context().is_training
+        with tf.variable_scope('embedding'):
+            self.y = self.embedding(self.x, is_training)  # (n, e)
+        self.pred = tf.to_int32(tf.argmax(self.y, axis=1), name='prediction')
+        self.cost = self.loss()
 
-    @staticmethod
-    def all_model_names(logdir):
-        import glob, os
-        path = '{}/*.meta'.format(logdir)
-        model_names = map(lambda f: os.path.basename(f).replace('.meta', ''), glob.glob(path))
-        return model_names
+        # summaries
+        tf.summary.scalar('train/loss', self.cost)
+        tf.summary.scalar('train/accuracy', self.accuracy())
+
+    def _get_optimizer(self):
+        lr = tf.get_variable('learning_rate', initializer=hp.train.lr, trainable=False)
+        return tf.train.AdamOptimizer(lr)

@@ -2,124 +2,76 @@
 # !/usr/bin/env python
 
 
-from data_load import DataLoader
-from model import Model
-import tensorflow as tf
-from hparam import Hparam
 import argparse
-from tqdm import tqdm
-from tensorflow.contrib.tensorboard.plugins import projector
+import multiprocessing
 import os
-from utils import remove_all_files
+
+import tensorflow as tf
+from tensorpack.callbacks.base import Callback
+from tensorpack.callbacks.saver import ModelSaver
+from tensorpack.tfutils.sessinit import SaverRestore
+from tensorpack.train.interface import TrainConfig, SimpleTrainer
+from tensorpack.train.interface import launch_train_with_config
+from tensorpack.utils import logger
+
+from data_load import DataLoader, AudioMeta
+from eval import get_eval_dataflow, get_eval_input_names, get_eval_output_names
+from hparam import hparam as hp
+from model import Model
+from tensorpack_extension import FlexibleQueueInput
 
 
-def train(queue=True):
-    hp = Hparam.get_global_hparam()
+class EvalCallback(Callback):
+    def _setup_graph(self):
 
-    # Data loader
-    arg_data_loader = {'data_path': hp.train.data_path, 'batch_size': hp.train.batch_size}
-    arg_data_loader.update(hp.signal)
-    data_loader = DataLoader(**arg_data_loader)
+        self.pred = self.trainer.get_predictor(
+            get_eval_input_names(),
+            get_eval_output_names())
+        self.df = get_eval_dataflow()
 
-    # Model
-    model = Model(data_loader, is_training=True, **hp.model)
-    loss_op, sim_pos, sim_neg = model.loss(hp.train.margin)
-
-    # Training
-    global_step = tf.Variable(0, name='global_step', trainable=False)
-    optimizer = tf.train.AdamOptimizer(learning_rate=hp.train.lr)
-
-    # Gradient clipping to prevent loss explosion
-    gvs = optimizer.compute_gradients(loss_op)
-    gvs = [(tf.clip_by_value(grad, hp.train.clip_value_min, hp.train.clip_value_max), var) for grad, var in gvs]
-    gvs = [(tf.clip_by_norm(grad, hp.train.clip_norm), var) for grad, var in gvs]
-
-    train_op = optimizer.apply_gradients(gvs, global_step=global_step)
-
-    # Summary
-    tf.summary.scalar('train/loss', loss_op)
-    # tf.summary.histogram('x', model.x)
-    # tf.summary.histogram('x_pos', model.x_pos)
-    # tf.summary.histogram('x_neg', model.x_neg)
-    # tf.summary.histogram('y', model.y)
-    # tf.summary.histogram('y_pos', model.y_pos)
-    # tf.summary.histogram('y_neg', model.y_neg)
-    # tf.summary.histogram('sim/pos', sim_pos)
-    # tf.summary.histogram('sim/neg', sim_neg)
-    # for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'net'):
-    #     tf.summary.histogram(v.name, v)
-
-    summ_op = tf.summary.merge_all()
-
-    session_conf = tf.ConfigProto(
-        gpu_options=tf.GPUOptions(
-            allow_growth=True,
-        ),
-    )
-    with tf.Session(config=session_conf) as sess:
-        # Load trained model
-        sess.run(tf.global_variables_initializer())
-        model.load(sess, logdir=hp.logdir)
-
-        writer = tf.summary.FileWriter(hp.logdir)
-        saver = tf.train.Saver()
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(coord=coord)
-
-        for step in tqdm(range(global_step.eval() + 1, hp.train.num_steps + 1), leave=False, unit='step'):
-            feed_dict = {}
-            if not queue:
-                feed_dict = dict(zip((model.x, model.x_pos, model.x_neg, model.speaker_id), data_loader.get_batch()))
-
-            # Write checkpoint files at every step
-            _, summ, gs = sess.run([train_op, summ_op, global_step], feed_dict=feed_dict)
-
-            if step % hp.train.save_per_step == 0:
-                saver.save(sess, os.path.join(hp.logdir, hp.train.ckpt_prefix), global_step=gs)
-
-                # Write embeddings
-                config = projector.ProjectorConfig()
-                embedding_conf = config.embeddings.add()
-                embedding_conf.tensor_name = model.y.name
-                projector.visualize_embeddings(writer, config)
-
-                # Write eval accuracy at every n step
-                # with tf.Graph().as_default():
-                # eval(logdir=logdir, queue=False, writer=writer)
-
-            writer.add_summary(summ, global_step=gs)
-
-        writer.close()
-        coord.request_stop()
-        coord.join(threads)
-
-
-def get_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('case', type=str, help='experiment case name.')
-    parser.add_argument('--r', action='store_true', help='start training from the beginning.')
-    parser.add_argument('--no-queue', action='store_true', help='run without queue for debugging.')
-    arguments = parser.parse_args()
-    return arguments
-
+    def _trigger_epoch(self):
+        _, mel_spec, speaker_id = self.df.get_data().next()
+        acc, = self.pred(mel_spec, speaker_id)
+        self.trainer.monitors.put_scalar('eval/accuracy', acc)
 
 if __name__ == '__main__':
-    args = get_arguments()
+    # get arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('case', type=str, help='experiment case name.')
+    parser.add_argument('--ckpt', help='checkpoint to load model.')
+    parser.add_argument('--gpu', help='comma separated list of GPU(s) to use.')
+    parser.add_argument('--r', action='store_true', help='start training from the beginning.')
+    args = parser.parse_args()
 
-    # Set hyper-parameters globally
-    hp = Hparam(args.case).set_as_global_hparam()
+    # set hyper-parameters from yaml file
+    hp.set_hparam_yaml(case=args.case)
 
-    if args.r:
-        ckpt = '{}/checkpoint'.format(os.path.join(hp.logdir))
-        if os.path.exists(ckpt):
-            os.remove(ckpt)
-            remove_all_files(os.path.join(hp.logdir, 'events.out'))
-            remove_all_files(os.path.join(hp.logdir, hp.train.ckpt_prefix))
+    # dataflow
+    audio_meta = AudioMeta(hp.train.data_path)
+    data_loader = DataLoader(audio_meta, hp.train.batch_size)
 
-    queue = True
-    if args.no_queue:
-        queue = False
+    # set logger for event and model saver
+    logger.set_logger_dir(hp.logdir)
 
-    train(queue=queue)
+    # set train config
+    train_conf = TrainConfig(
+        model=Model(**hp.model),
+        data=FlexibleQueueInput(
+            data_loader.dataflow(nr_prefetch=5000, nr_thread=int(multiprocessing.cpu_count() // 1.5)),
+            capacity=3000),
+        callbacks=[
+            ModelSaver(checkpoint_dir=hp.logdir),
+            EvalCallback()
+        ],
+        steps_per_epoch=100
+    )
 
-    print("Done")
+    ckpt = args.ckpt if args.ckpt else tf.train.latest_checkpoint(hp.logdir)
+    if ckpt and not args.r:
+        train_conf.session_init = SaverRestore(ckpt)
+
+    if args.gpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+        train_conf.nr_tower = len(args.gpu.split(','))
+
+    launch_train_with_config(train_conf, SimpleTrainer())

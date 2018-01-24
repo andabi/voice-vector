@@ -1,96 +1,71 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/env python
-
-
-import glob
+import fnmatch
 import os
 import random
 
-import tensorflow as tf
-from hparam import Hparam
+from tensorpack.dataflow.base import RNGDataFlow
+from tensorpack.dataflow.common import BatchData
+from tensorpack.dataflow.prefetch import PrefetchData
 
-from audio import read_wav, wav_random_crop, wav2spectrogram, linear_to_mel, amp_to_db
-import numpy as np
+from feature_extract import wav2melspec_db
+from hparam import hparam as hp
+from prepro import read_wav, get_random_crop, fix_length
 
 
-class DataLoader:
-    def __init__(self, data_path, sr, duration, n_fft, n_mels, win_length, hop_length, batch_size):
-        self.data_path = data_path
-        self.sr = sr
-        self.duration = duration
+class DataLoader(RNGDataFlow):
+    def __init__(self, audio_meta, batch_size):
+        self.audio_meta = audio_meta
         self.batch_size = batch_size
-        self.length = int(duration * sr)
-        self.n_fft = n_fft
-        self.n_mels = n_mels
-        self.win_length = win_length
-        self.hop_length = hop_length
-        self.length_spec = self.length // hop_length + 1
-        self.speaker_dict = dict(enumerate([speaker for speaker in os.listdir(self.data_path) if
-                                            os.path.isdir(os.path.join(self.data_path, speaker))]))
+        self.speaker_dict = audio_meta.get_speaker_dict()
 
-    def load_triplet(self, speaker_id):
-        speakers_except = list(set(self.speaker_dict.keys()) - set(list([speaker_id])))
-        the_other_speaker = random.choice(speakers_except)
-        wav = self._get_random_wav(speaker_id)
-        wav_pos = self._get_random_wav(speaker_id)
-        wav_neg = self._get_random_wav(the_other_speaker)
-
-        # Wav to spectrogram
-        spec, _ = wav2spectrogram(wav, self.n_fft, self.win_length, self.hop_length)  # (1 + n_fft/2, t)
-        spec_pos, _ = wav2spectrogram(wav_pos, self.n_fft, self.win_length, self.hop_length)
-        spec_neg, _ = wav2spectrogram(wav_neg, self.n_fft, self.win_length, self.hop_length)
-
-        # Mel-spectrogram
-        spec = linear_to_mel(spec, self.sr, self.n_fft, self.n_mels)  # (n_mel, t)
-        spec_pos = linear_to_mel(spec_pos, self.sr, self.n_fft, self.n_mels)
-        spec_neg = linear_to_mel(spec_neg, self.sr, self.n_fft, self.n_mels)
-
-        # # Decibel
-        # spec = amp_to_db(spec)
-        # spec_pos = amp_to_db(spec_pos)
-        # spec_neg = amp_to_db(spec_neg)
-
-        return spec.T, spec_pos.T, spec_neg.T  # (t, n_mel)
-
-    def _get_random_wav(self, speaker_id):
-        wavfiles = glob.glob('{}/{}/*.wav'.format(self.data_path, self.speaker_dict[speaker_id]))
-        wavfile = random.choice(wavfiles)
-        randomly_cropped_wav = wav_random_crop(read_wav(wavfile, self.sr), length=int(self.sr * self.duration))
-        return randomly_cropped_wav
-
-    def get_batch_queue(self):
-        hp = Hparam.get_global_hparam()
-
-        speaker_ids = tf.convert_to_tensor(self.speaker_dict.keys())
-        speaker_id = tf.train.slice_input_producer([speaker_ids], shuffle=True)[0]
-        spec, spec_pos, spec_neg = tf.py_func(self.load_triplet, [speaker_id], (tf.float32, tf.float32, tf.float32))
-        spec_batch, spec_pos_batch, spec_neg_batch, speaker_id_batch = tf.train.batch(
-            tensors=[spec, spec_pos, spec_neg, speaker_id],
-            shapes=[
-                (self.length_spec, self.n_mels),
-                (self.length_spec, self.n_mels),
-                (self.length_spec, self.n_mels), ()],
-            num_threads=hp.data_load.num_threads,
-            batch_size=self.batch_size,
-            capacity=self.batch_size * hp.data_load.num_threads,
-            dynamic_pad=True, name='batch_queue')
-        return spec_batch, spec_pos_batch, spec_neg_batch, speaker_id_batch  # (n, t, n_mels)
-
-    def get_batch_placeholder(self):
-        spec_batch = tf.placeholder(tf.float32, shape=(self.batch_size, self.length_spec, self.n_mels), name='x')
-        spec_pos_batch = tf.placeholder(tf.float32, shape=(self.batch_size, self.length_spec, self.n_mels),
-                                        name='x_pos')
-        spec_neg_batch = tf.placeholder(tf.float32, shape=(self.batch_size, self.length_spec, self.n_mels),
-                                        name='x_neg')
-        speaker_id_batch = tf.placeholder(tf.int32, shape=(self.batch_size,), name='speaker_id')
-        return spec_batch, spec_pos_batch, spec_neg_batch, speaker_id_batch
-
-    def get_batch(self):
-        triplet_batch, speaker_id_batch = list(), list()
-        for i in range(self.batch_size):
+    def get_data(self):
+        while True:
             speaker_id = random.choice(self.speaker_dict.keys())
-            triplet = self.load_triplet(speaker_id)
-            triplet_batch.append(triplet)
-            speaker_id_batch.append(speaker_id)
-        spec_batch, spec_pos_batch, spec_neg_batch = map(np.array, zip(*triplet_batch))
-        return spec_batch, spec_pos_batch, spec_neg_batch, speaker_id_batch
+            wav = self._load_random_wav(speaker_id)
+            mel_spec = wav2melspec_db(wav, hp.signal.sr, hp.signal.n_fft, hp.signal.win_length,
+                                                             hp.signal.hop_length, hp.signal.n_mels)
+            yield wav, mel_spec, speaker_id
+
+    def dataflow(self, nr_prefetch=1000, nr_thread=1):
+        ds = self
+        # TODO zero-padding
+        ds = BatchData(ds, self.batch_size)
+        ds = PrefetchData(ds, nr_prefetch, nr_thread)
+        return ds
+
+    def _load_random_wav(self, speaker_id):
+        wavfile = self.audio_meta.get_random_audio(speaker_id)
+        wav = read_wav(wavfile, hp.signal.sr)
+        length = int(hp.signal.duration * hp.signal.sr)
+        wav = get_random_crop(wav, length=length)
+        wav = fix_length(wav, length)
+        return wav  # (t, n_mel)
+
+
+class AudioMeta:
+    def __init__(self, data_path):
+        self.data_path = data_path
+        self.speaker_dict = dict(enumerate([speaker for speaker in os.listdir(data_path) if
+                                            os.path.isdir(os.path.join(data_path,
+                                                                       speaker))]))  # (k, v) = (speaker_id, speaker_name)
+        self.audio_dict = dict()  # (k, v) = (speaker_id, wavfiles)
+
+    def get_speaker_dict(self):
+        return self.speaker_dict
+
+    def num_speakers(self):
+        return len(self.speaker_dict)
+
+    def get_all_audio(self, speaker_id):
+        if speaker_id not in self.audio_dict:
+            path = '{}/{}'.format(self.data_path, self.speaker_dict[speaker_id])
+            wavfiles = [os.path.join(dirpath, f) for dirpath, _, files in os.walk(path) for f in fnmatch.filter(files, '*.wav')]
+            # wavfiles = glob.glob('{}/{}/**/*.wav'.format(self.data_path, self.speaker_dict[speaker_id]))
+            self.audio_dict[speaker_id] = wavfiles
+        return self.audio_dict[speaker_id]
+
+    def get_random_audio(self, speaker_id):
+        wavfiles = self.get_all_audio(speaker_id)
+        wavfile = random.choice(wavfiles)
+        return wavfile

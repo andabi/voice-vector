@@ -1,23 +1,19 @@
 ---
-batch_1:
-  logdir_path: 'logdir'
-  train:
-    batch_size: 1
-  embed:
-    batch_size: 1000
----
-batch_2:
-  train:
-    batch_size: 2
----
-batch_4:
-  logdir_path: 'logdir'
-  train:
-    batch_size: 4
-  embed:
-    batch_size: 1000
-random:
+baseline:
   signal:
     duration: 0.5
   model:
     embedding_size: 10
+  embed:
+    batch_size: 512
+---
+baseline_2s:
+  signal:
+    duration: 2
+  model:
+    embedding_size: 10
+  train:
+    batch_size: 32
+  embed:
+    data_path: 'datasets/timit/TIMIT/TEST'
+    batch_size: 8
