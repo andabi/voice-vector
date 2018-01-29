@@ -61,4 +61,3 @@ if __name__ == '__main__':
         writer.add_summary(summ)
     writer.close()
 
-    print "done"
