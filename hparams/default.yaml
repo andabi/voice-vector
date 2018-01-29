@@ -4,7 +4,7 @@ data_load:
 
 signal:
   sr: 16000
-  duration: 2
+  duration: 0.5
   win_length: 400
   hop_length: 80
   n_fft: 512

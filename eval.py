@@ -11,7 +11,7 @@ from tensorpack.tfutils.sessinit import SaverRestore
 
 from data_load import DataLoader, AudioMeta
 from hparam import hparam as hp
-from model import Model
+from model import ClassificationModel
 
 
 def compute_accuracy(model, mel_spec, speaker_id, ckpt=None):
@@ -35,11 +35,6 @@ def get_eval_output_names():
     return ['accuracy']
 
 
-def get_eval_dataflow():
-    audio_meta = AudioMeta(hp.eval.data_path)
-    data_loader = DataLoader(audio_meta, hp.eval.batch_size)
-    return data_loader.dataflow()
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('case', type=str, help='experiment case name.')
@@ -48,10 +43,13 @@ if __name__ == '__main__':
 
     hp.set_hparam_yaml(args.case)
 
-    # samples
-    _, mel_spec, speaker_id = get_eval_dataflow().get_data().next()
+    audio_meta = AudioMeta(hp.eval.data_path)
+    data_loader = DataLoader(audio_meta, hp.eval.batch_size)
 
-    model = Model(**hp.model)
+    # samples
+    _, mel_spec, speaker_id = data_loader.dataflow().get_data().next()
+
+    model = ClassificationModel(num_classes=audio_meta.num_speaker, **hp.model)
 
     ckpt = args.ckpt if args.ckpt else tf.train.latest_checkpoint(hp.logdir)
 

@@ -3,7 +3,7 @@
 
 
 from data_load import DataLoader, AudioMeta
-from model import Model
+from model import ClassificationModel
 import tensorflow as tf
 from hparam import hparam as hp
 import argparse
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     # samples
     wav, mel_spec, speaker_id = data_loader.dataflow().get_data().next()
 
-    model = Model(**hp.model)
+    model = ClassificationModel(num_classes=audio_meta.num_speaker, **hp.model)
 
     ckpt = args.ckpt if args.ckpt else tf.train.latest_checkpoint(hp.logdir)
 

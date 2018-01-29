@@ -11,7 +11,7 @@ from tensorpack.train.tower import get_current_tower_context
 from tensorpack.tfutils.scope_utils import auto_reuse_variable_scope
 
 
-class Model(ModelDesc):
+class ClassificationModel(ModelDesc):
     '''
     n = batch size
     t = timestep size
@@ -19,12 +19,13 @@ class Model(ModelDesc):
     e = embedding size
     '''
 
-    def __init__(self, num_banks, hidden_units, num_highway, norm_type, embedding_size):
+    def __init__(self, num_banks, hidden_units, num_highway, norm_type, embedding_size, num_classes):
         self.num_banks = num_banks
         self.hidden_units = hidden_units
         self.num_highway = num_highway
         self.norm_type = norm_type
         self.embedding_size = embedding_size
+        self.num_classes = num_classes
 
     def __call__(self):
         return self.y, self.speaker_id
@@ -56,9 +57,12 @@ class Model(ModelDesc):
         # Take the last output
         out = out[..., -1]  # (n, h)
 
-        # Final project for classification
-        out = tf.layers.dense(out, self.embedding_size, name="final_projection")  # (n, c)
+        # Embedding
+        out = tf.layers.dense(out, self.embedding_size)  # (n, e)
         out = tf.identity(out, name="embedding")
+
+        # Final project for classification
+        out = tf.layers.dense(out, self.num_classes, name="final_projection")  # (n, c)
 
         return out
 

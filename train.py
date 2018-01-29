@@ -13,12 +13,14 @@ from tensorpack.tfutils.sessinit import SaverRestore
 from tensorpack.train.interface import TrainConfig, SimpleTrainer
 from tensorpack.train.interface import launch_train_with_config
 from tensorpack.utils import logger
+from tensorpack import TestDataSpeed
 
 from data_load import DataLoader, AudioMeta
-from eval import get_eval_dataflow, get_eval_input_names, get_eval_output_names
+from eval import get_eval_input_names, get_eval_output_names
 from hparam import hparam as hp
-from model import Model
+from model import ClassificationModel
 from tensorpack_extension import FlexibleQueueInput
+from tensorpack.train.trainers import SyncMultiGPUTrainerReplicated
 
 
 class EvalCallback(Callback):
@@ -27,10 +29,13 @@ class EvalCallback(Callback):
         self.pred = self.trainer.get_predictor(
             get_eval_input_names(),
             get_eval_output_names())
-        self.df = get_eval_dataflow()
+
+    def _before_train(self):
+        self.audio_meta = AudioMeta(hp.embed.data_path)
+        self.data_loader = DataLoader(audio_meta, hp.embed.batch_size)
 
     def _trigger_epoch(self):
-        _, mel_spec, speaker_id = self.df.get_data().next()
+        _, mel_spec, speaker_id = self.data_loader.dataflow().get_data().next()
         acc, = self.pred(mel_spec, speaker_id)
         self.trainer.monitors.put_scalar('eval/accuracy', acc)
 
@@ -48,16 +53,16 @@ if __name__ == '__main__':
 
     # dataflow
     audio_meta = AudioMeta(hp.train.data_path)
-    data_loader = DataLoader(audio_meta, hp.train.batch_size)
+    data_loader = DataLoader(audio_meta, 1)
 
     # set logger for event and model saver
     logger.set_logger_dir(hp.logdir)
 
     # set train config
     train_conf = TrainConfig(
-        model=Model(**hp.model),
+        model=ClassificationModel(num_classes=audio_meta.num_speaker, **hp.model),
         data=FlexibleQueueInput(
-            data_loader.dataflow(nr_prefetch=5000, nr_thread=int(multiprocessing.cpu_count() // 1.5)),
+            data_loader.dataflow(nr_prefetch=5000, nr_thread=int(multiprocessing.cpu_count())),
             capacity=3000),
         callbacks=[
             ModelSaver(checkpoint_dir=hp.logdir),
@@ -74,4 +79,10 @@ if __name__ == '__main__':
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
         train_conf.nr_tower = len(args.gpu.split(','))
 
-    launch_train_with_config(train_conf, SimpleTrainer())
+    trainer = SyncMultiGPUTrainerReplicated(4)
+
+    launch_train_with_config(train_conf, trainer=trainer)
+
+    # test_loader = TestDataSpeed(data_loader, 100000)
+    # for _ in test_loader.get_data():
+    #     pass

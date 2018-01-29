@@ -29,7 +29,6 @@ class DataLoader(RNGDataFlow):
 
     def dataflow(self, nr_prefetch=1000, nr_thread=1):
         ds = self
-        # TODO zero-padding
         ds = BatchData(ds, self.batch_size)
         ds = PrefetchData(ds, nr_prefetch, nr_thread)
         return ds
@@ -49,6 +48,7 @@ class AudioMeta:
         self.speaker_dict = dict(enumerate([speaker for speaker in os.listdir(data_path) if
                                             os.path.isdir(os.path.join(data_path,
                                                                        speaker))]))  # (k, v) = (speaker_id, speaker_name)
+        self.num_speaker = len(self.speaker_dict)
         self.audio_dict = dict()  # (k, v) = (speaker_id, wavfiles)
 
     def get_speaker_dict(self):
