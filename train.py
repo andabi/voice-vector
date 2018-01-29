@@ -81,7 +81,7 @@ if __name__ == '__main__':
         test_loader = get_remote_data_loader(args.test_port, hp.embed.batch_size)
     else:
         data_loader = DataLoader(audio_meta, hp.train.batch_size).dataflow()
-        data_loader = DataLoader(audio_meta, hp.eval.batch_size).dataflow()
+        test_loader = DataLoader(audio_meta, hp.eval.batch_size).dataflow()
 
     # set logger for event and model saver
     logger.set_logger_dir(hp.logdir)
@@ -105,7 +105,7 @@ if __name__ == '__main__':
             os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
             train_conf.nr_tower = len(args.gpu.split(','))
 
-        trainer = SyncMultiGPUTrainerReplicated(8)
+        trainer = SyncMultiGPUTrainerReplicated(1)
 
         launch_train_with_config(train_conf, trainer=trainer)
     else:
