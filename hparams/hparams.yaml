@@ -19,9 +19,11 @@ baseline_2s:
 ---
 voxceleb:
   train:
-    data_path: '/data/public/rw/voxceleb/speaker_data'
+#    data_path: '/data/public/rw/voxceleb/speaker_data'
+    data_path: 'datasets/voxceleb/speaker_data'
+    num_gpu: 1
   eval:
-    data_path: '/data/public/rw/voxceleb/speaker_data'
+    data_path: 'datasets/voxceleb/speaker_data'
   embed:
-    data_path: '/data/public/rw/voxceleb/speaker_data'
-  batch_size: 32
+    data_path: 'datasets/voxceleb/speaker_data'
+  batch_size: 1024

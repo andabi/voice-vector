@@ -10,17 +10,16 @@ import tensorflow as tf
 from tensorpack.callbacks.base import Callback
 from tensorpack.callbacks.saver import ModelSaver
 from tensorpack.tfutils.sessinit import SaverRestore
-from tensorpack.train.interface import TrainConfig, SimpleTrainer
+from tensorpack.train.interface import TrainConfig
 from tensorpack.train.interface import launch_train_with_config
+from tensorpack.train.trainers import SyncMultiGPUTrainerReplicated, SimpleTrainer
 from tensorpack.utils import logger
-from tensorpack import TestDataSpeed
 
 from data_load import DataLoader, AudioMeta
 from eval import get_eval_input_names, get_eval_output_names
 from hparam import hparam as hp
 from model import ClassificationModel
 from tensorpack_extension import FlexibleQueueInput
-from tensorpack.train.trainers import SyncMultiGPUTrainerReplicated
 
 
 class EvalCallback(Callback):
@@ -53,7 +52,8 @@ if __name__ == '__main__':
 
     # dataflow
     audio_meta = AudioMeta(hp.train.data_path)
-    data_loader = DataLoader(audio_meta, 1)
+    data_loader = DataLoader(audio_meta, hp.train.batch_size)
+    df = data_loader.dataflow(nr_prefetch=5000, nr_thread=int(multiprocessing.cpu_count() // 1.5))
 
     # set logger for event and model saver
     logger.set_logger_dir(hp.logdir)
@@ -61,9 +61,7 @@ if __name__ == '__main__':
     # set train config
     train_conf = TrainConfig(
         model=ClassificationModel(num_classes=audio_meta.num_speaker, **hp.model),
-        data=FlexibleQueueInput(
-            data_loader.dataflow(nr_prefetch=5000, nr_thread=int(multiprocessing.cpu_count())),
-            capacity=3000),
+        data=FlexibleQueueInput(df, capacity=3000),
         callbacks=[
             ModelSaver(checkpoint_dir=hp.logdir),
             EvalCallback()
@@ -79,7 +77,8 @@ if __name__ == '__main__':
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
         train_conf.nr_tower = len(args.gpu.split(','))
 
-    trainer = SyncMultiGPUTrainerReplicated(4)
+    trainer = SyncMultiGPUTrainerReplicated(hp.train.num_gpu)
+    # trainer = SimpleTrainer()
 
     launch_train_with_config(train_conf, trainer=trainer)
 

@@ -61,19 +61,15 @@ class ClassificationModel(ModelDesc):
         out = tf.layers.dense(out, self.embedding_size)  # (n, e)
         out = tf.identity(out, name="embedding")
 
-        # Final project for classification
-        out = tf.layers.dense(out, self.num_classes, name="final_projection")  # (n, c)
-
         return out
 
     def loss(self):
-        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y, labels=self.speaker_id)
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits, labels=self.speaker_id)
         loss = tf.reduce_mean(loss)
         return loss
 
     def accuracy(self):
-        pred = tf.to_int32(tf.argmax(self.y, axis=1))
-        acc = tf.reduce_mean(tf.to_float(tf.equal(self.speaker_id, pred)), name='accuracy')
+        acc = tf.reduce_mean(tf.to_float(tf.equal(self.speaker_id, self.pred)), name='accuracy')
         return acc
 
     def _get_inputs(self):
@@ -88,7 +84,8 @@ class ClassificationModel(ModelDesc):
         is_training = get_current_tower_context().is_training
         with tf.variable_scope('embedding'):
             self.y = self.embedding(self.x, is_training)  # (n, e)
-        self.pred = tf.to_int32(tf.argmax(self.y, axis=1), name='prediction')
+        self.logits = tf.layers.dense(self.y, self.num_classes, name="logits")  # (n, c)
+        self.pred = tf.to_int32(tf.argmax(self.logits, axis=1), name='prediction')
         self.cost = self.loss()
 
         # summaries

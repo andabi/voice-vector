@@ -25,6 +25,7 @@ train:
   # path
   data_path: 'datasets/vcc2016_training'
   ckpt_prefix: 'model.ckpt'
+  num_gpu: 1
 
   # train
   batch_size: 128
