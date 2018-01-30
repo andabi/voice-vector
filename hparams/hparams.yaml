@@ -1,29 +1,27 @@
 ---
 baseline:
-  signal:
-    duration: 0.5
   model:
-    embedding_size: 10
+    embedding_size: 16
+  train:
+    num_gpu: 4
   embed:
     batch_size: 512
 ---
 baseline_2s:
   signal:
     duration: 2
-  model:
-    embedding_size: 10
   train:
     batch_size: 32
   embed:
     batch_size: 512
 ---
 voxceleb:
+  model:
+    hidden_units: 512
   train:
-#    data_path: '/data/public/rw/voxceleb/speaker_data'
-    data_path: 'datasets/voxceleb/speaker_data'
-    num_gpu: 1
+    data_path: 'datasets/voxceleb_resampled/speaker_data'
+    num_gpu: 4
   eval:
-    data_path: 'datasets/voxceleb/speaker_data'
+    data_path: 'datasets/voxceleb_resampled/speaker_data'
   embed:
-    data_path: 'datasets/voxceleb/speaker_data'
-  batch_size: 1024
+    data_path: 'datasets/voxceleb_resampled/speaker_data'

@@ -47,6 +47,7 @@ eval:
 embed:
   # path
   data_path: 'datasets/vcc2016_evaluation'
+  batch_size: 512
 
   # test
   batch_size: 128

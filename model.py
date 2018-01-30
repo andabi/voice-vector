@@ -24,7 +24,7 @@ class ClassificationModel(ModelDesc):
         self.hidden_units = hidden_units
         self.num_highway = num_highway
         self.norm_type = norm_type
-        self.embedding_size = embedding_size
+        # self.embedding_size = embedding_size
         self.num_classes = num_classes
 
     def __call__(self):
@@ -58,13 +58,13 @@ class ClassificationModel(ModelDesc):
         out = out[..., -1]  # (n, h)
 
         # Embedding
-        out = tf.layers.dense(out, self.embedding_size)  # (n, e)
+        out = tf.layers.dense(out, self.num_classes, name='projection')  # (n, c)
         out = tf.identity(out, name="embedding")
 
         return out
 
     def loss(self):
-        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits, labels=self.speaker_id)
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y, labels=self.speaker_id)
         loss = tf.reduce_mean(loss)
         return loss
 
@@ -84,8 +84,8 @@ class ClassificationModel(ModelDesc):
         is_training = get_current_tower_context().is_training
         with tf.variable_scope('embedding'):
             self.y = self.embedding(self.x, is_training)  # (n, e)
-        self.logits = tf.layers.dense(self.y, self.num_classes, name="logits")  # (n, c)
-        self.pred = tf.to_int32(tf.argmax(self.logits, axis=1), name='prediction')
+        # self.logits = tf.layers.dense(self.y, self.num_classes, name="logits")  # (n, c)
+        self.pred = tf.to_int32(tf.argmax(self.y, axis=1), name='prediction')
         self.cost = self.loss()
 
         # summaries
