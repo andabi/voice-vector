@@ -21,7 +21,7 @@ class DataLoader(RNGDataFlow):
 
     def get_data(self):
         while True:
-            speaker_id = random.choice(self.speaker_dict.keys())
+            speaker_id = random.choice(list(self.speaker_dict.keys()))
             wav = self._load_random_wav(speaker_id)
             mel_spec = wav2melspec_db(wav, hp.signal.sr, hp.signal.n_fft, hp.signal.win_length,
                                                              hp.signal.hop_length, hp.signal.n_mels)
@@ -29,7 +29,8 @@ class DataLoader(RNGDataFlow):
 
     def dataflow(self, nr_prefetch=1000, nr_thread=1):
         ds = self
-        ds = BatchData(ds, self.batch_size)
+        if self.batch_size > 1:
+            ds = BatchData(ds, self.batch_size)
         ds = PrefetchData(ds, nr_prefetch, nr_thread)
         return ds
 

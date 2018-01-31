@@ -16,12 +16,12 @@ baseline_2s:
     batch_size: 512
 ---
 voxceleb:
-  model:
-    hidden_units: 512
+#  model:
+#    hidden_units: 512
   train:
-    data_path: 'datasets/voxceleb_resampled/speaker_data'
+    data_path: '/data/public/rw/voxceleb_resampled/speaker_data'
     num_gpu: 4
   eval:
-    data_path: 'datasets/voxceleb_resampled/speaker_data'
+    data_path: '/data/public/rw/voxceleb_resampled/speaker_data'
   embed:
-    data_path: 'datasets/voxceleb_resampled/speaker_data'
+    data_path: '/data/public/rw/voxceleb_resampled/speaker_data'
