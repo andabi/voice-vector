@@ -9,6 +9,8 @@ signal:
   hop_length: 80
   n_fft: 512
   n_mels: 80
+  max_db: 35
+  min_db: -55
 
 model:
   num_banks: 8
@@ -28,13 +30,13 @@ train:
 
   # train
   batch_size: 128
-  margin: 0.2
+  steps_per_epoch: 100
   lr: 0.00005
-  num_steps: 10000000
-  save_per_step: 50000
-  clip_value_max: 5.
-  clip_value_min: -5.
-  clip_norm: 100
+#  margin: 0.2
+#  num_steps: 10000000
+#  clip_value_max: 5.
+#  clip_value_min: -5.
+#  clip_norm: 100
 
 eval:
   # path

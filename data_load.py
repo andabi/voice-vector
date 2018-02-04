@@ -8,7 +8,7 @@ from tensorpack.dataflow.base import RNGDataFlow
 from tensorpack.dataflow.common import BatchData
 from tensorpack.dataflow.prefetch import PrefetchData
 
-from feature_extract import wav2melspec_db
+from feature_extract import wav2melspec_db, normalize_db
 from hparam import hparam as hp
 from prepro import read_wav, get_random_crop, fix_length
 
@@ -25,6 +25,7 @@ class DataLoader(RNGDataFlow):
             wav = self._load_random_wav(speaker_id)
             mel_spec = wav2melspec_db(wav, hp.signal.sr, hp.signal.n_fft, hp.signal.win_length,
                                                              hp.signal.hop_length, hp.signal.n_mels)
+            mel_spec = normalize_db(mel_spec, max_db=hp.signal.max_db, min_db=hp.signal.min_db)
             yield wav, mel_spec, speaker_id
 
     def dataflow(self, nr_prefetch=1000, nr_thread=1):

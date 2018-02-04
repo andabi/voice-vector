@@ -43,7 +43,7 @@ class EvalCallback(Callback):
 def get_remote_dataflow(port, nr_prefetch=1000, nr_thread=1):
     ipc = 'ipc:///tmp/ipc-socket'
     tcp = 'tcp://0.0.0.0:%d' % port
-    data_loader = RemoteDataZMQ(ipc, tcp, hwm=10000)
+    data_loader = RemoteDataZMQ(ipc, tcp, hwm=50000)
     data_loader = BatchData(data_loader, batch_size=hp.train.batch_size)
     data_loader = PrefetchData(data_loader, nr_prefetch, nr_thread)
     return data_loader
@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 ModelSaver(checkpoint_dir=hp.logdir),
                 EvalCallback()
             ],
-            steps_per_epoch=100
+            steps_per_epoch=hp.train.steps_per_epoch
         )
 
         ckpt = args.ckpt if args.ckpt else tf.train.latest_checkpoint(hp.logdir)

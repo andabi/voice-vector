@@ -85,18 +85,17 @@ def rewrite_mp3_to_wav(src_path, tar_path):
     AudioSegment.from_mp3(src_path).export(tar_path, format='wav')
 
 
-def rewrite_decibel(src_path, tar_path, target_dB):
+def rewrite_decibel(source_path, target_path, target_dB):
     """
     Read a wav, change its average amplitude to target decibel and write it to target path.
-    :param src_path: source wav file path
-    :param tar_path: target wav file path
+    :param source_path: source wav file path
+    :param target_path: target wav file path
     :param target_dB: target decibel
     """
-    sound = AudioSegment.from_wav(src_path)
+    sound = AudioSegment.from_wav(source_path)
     change_dBFS = target_dB - sound.dBFS
     normalized_sound = sound.apply_gain(change_dBFS)
-    basepath, filename, _ = _split_path(src_path)
-    normalized_sound.export('{}/{}.wav'.format(tar_path, filename), 'wav')
+    normalized_sound.export(target_path, 'wav')
 
 
 def _split_path(path):

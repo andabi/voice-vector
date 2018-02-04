@@ -46,14 +46,16 @@ if __name__ == '__main__':
 
     hp.set_hparam_yaml(args.case)
 
-    # Data loader
+    # model
+    audio_meta_train = AudioMeta(hp.train.data_path)
+    model = ClassificationModel(num_classes=audio_meta_train.num_speaker, **hp.model)
+
+    # data loader
     audio_meta = AudioMeta(hp.embed.data_path)
     data_loader = DataLoader(audio_meta, hp.embed.batch_size)
 
     # samples
     wav, mel_spec, speaker_id = data_loader.dataflow().get_data().next()
-
-    model = ClassificationModel(num_classes=audio_meta.num_speaker, **hp.model)
 
     ckpt = args.ckpt if args.ckpt else tf.train.latest_checkpoint(hp.logdir)
 
@@ -67,15 +69,21 @@ if __name__ == '__main__':
     embedding, similar_speaker_id = embedding_pred(mel_spec)
 
     # get a random audio of the predicted speaker.
-    audio_meta_train = AudioMeta(hp.train.data_path)
     wavfile_similar_speaker = np.array(map(lambda s: audio_meta_train.get_random_audio(s), similar_speaker_id))
     length = int(hp.signal.duration * hp.signal.sr)
     wav_similar_speaker = np.array(
         map(lambda w: fix_length(read_wav(w, hp.signal.sr, duration=hp.signal.duration), length),
             wavfile_similar_speaker))
 
+    # write audio
     tf.summary.audio('wav', wav, hp.signal.sr, max_outputs=10)
     tf.summary.audio('wav_most_similar', wav_similar_speaker, hp.signal.sr, max_outputs=10)
+
+    # write prediction
+    speaker_name = [audio_meta.get_speaker_dict()[sid] for sid in speaker_id]
+    similar_speaker_name = [audio_meta_train.get_speaker_dict()[sid] for sid in similar_speaker_id]
+    prediction = ['{} -> {}'.format(s, p) for s, p in zip(speaker_name, similar_speaker_name)]
+    tf.summary.text('prediction', tf.convert_to_tensor(prediction))
 
     writer = tf.summary.FileWriter(hp.logdir)
 
