@@ -38,7 +38,7 @@ def get_eval_output_names():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('case', type=str, help='experiment case name.')
-    parser.add_argument('--ckpt', help='checkpoint to load model.')
+    parser.add_argument('-ckpt', help='checkpoint to load model.')
     args = parser.parse_args()
 
     hp.set_hparam_yaml(args.case)

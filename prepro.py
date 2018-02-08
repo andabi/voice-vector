@@ -45,13 +45,18 @@ def split_wav(wav, top_db):
     return wavs
 
 
+def trim_wav(wav):
+    wav, _ = librosa.effects.trim(wav)
+    return wav
+
+
 def fix_length(wav, length):
     if len(wav) != length:
         wav = librosa.util.fix_length(wav, length)
     return wav
 
 
-def get_random_crop(wav, length):
+def crop_random_wav(wav, length):
     """
     Randomly cropped a part in a wav file.
     :param wav: a waveform
@@ -68,11 +73,10 @@ def get_random_crop(wav, length):
         wav = wav[start:end]
     else:
         wav = wav[:, start:end]
-
     return wav
 
 
-def rewrite_mp3_to_wav(src_path, tar_path):
+def mp3_to_wav(src_path, tar_path):
     """
     Read mp3 file from source path, convert it to wav and write it to target path. 
     Necessary libraries: ffmpeg, libav.
@@ -85,17 +89,22 @@ def rewrite_mp3_to_wav(src_path, tar_path):
     AudioSegment.from_mp3(src_path).export(tar_path, format='wav')
 
 
-def rewrite_decibel(source_path, target_path, target_dB):
+def prepro_audio(source_path, target_path, format=None, sr=None, db=None):
     """
-    Read a wav, change its average amplitude to target decibel and write it to target path.
+    Read a wav, change sample rate, format, and average decibel and write to target path.
     :param source_path: source wav file path
     :param target_path: target wav file path
-    :param target_dB: target decibel
+    :param sr: sample rate.
+    :param format: output audio format.
+    :param db: decibel.
     """
-    sound = AudioSegment.from_wav(source_path)
-    change_dBFS = target_dB - sound.dBFS
-    normalized_sound = sound.apply_gain(change_dBFS)
-    normalized_sound.export(target_path, 'wav')
+    sound = AudioSegment.from_file(source_path, format)
+    if sr:
+        sound = sound.set_frame_rate(sr)
+    if db:
+        change_dBFS = db - sound.dBFS
+        sound = sound.apply_gain(change_dBFS)
+    sound.export(target_path, 'wav')
 
 
 def _split_path(path):

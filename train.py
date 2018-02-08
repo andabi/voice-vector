@@ -53,11 +53,11 @@ if __name__ == '__main__':
     # get arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('case', type=str, help='experiment case name.')
-    parser.add_argument('--ckpt', help='checkpoint to load model.')
-    parser.add_argument('--gpu', help='comma separated list of GPU(s) to use.')
-    parser.add_argument('--r', action='store_true', help='start training from the beginning.')
-    parser.add_argument('--remote', action='store_true', help='use remote dataflow.')
-    parser.add_argument('--port', type=int, default=0)
+    parser.add_argument('-ckpt', help='checkpoint to load model.')
+    parser.add_argument('-gpu', help='comma separated list of GPU(s) to use.')
+    parser.add_argument('-r', action='store_true', help='start training from the beginning.')
+    parser.add_argument('-remote', action='store_true', help='use remote dataflow.')
+    parser.add_argument('-port', type=int, default=0)
     args = parser.parse_args()
 
     # set hyper-parameters from yaml file

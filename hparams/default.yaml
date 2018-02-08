@@ -25,6 +25,7 @@ logdir_path: '/data/private/voice-vector/logdir'
 train:
   # path
   data_path: 'datasets/vcc2016_training'
+  meta_path: ''
   ckpt_prefix: 'model.ckpt'
   num_gpu: 1
 
@@ -47,7 +48,10 @@ eval:
 
 embed:
   # path
+  audio_meta_class: AudioMeta
   data_path: 'datasets/vcc2016_evaluation'
+  meta_path: ''
+  meta_field_viz: ''
   batch_size: 512
 
   # test

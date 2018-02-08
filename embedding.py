@@ -2,7 +2,7 @@
 # !/usr/bin/env python
 
 
-from data_load import DataLoader, AudioMeta
+from data_load import DataLoader, VoxCelebMeta, CommonVoiceMeta
 from model import ClassificationModel
 import tensorflow as tf
 from hparam import hparam as hp
@@ -41,17 +41,18 @@ def plot_embedding(embedding, annotation, filename='outputs/embedding.png'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('case', type=str, help='experiment case name.')
-    parser.add_argument('--ckpt', help='checkpoint to load model.')
+    parser.add_argument('-ckpt', help='checkpoint to load model.')
     args = parser.parse_args()
 
     hp.set_hparam_yaml(args.case)
 
     # model
-    audio_meta_train = AudioMeta(hp.train.data_path)
+    audio_meta_train = VoxCelebMeta(hp.train.data_path, hp.train.meta_path)
     model = ClassificationModel(num_classes=audio_meta_train.num_speaker, **hp.model)
 
     # data loader
-    audio_meta = AudioMeta(hp.embed.data_path)
+    audio_meta_class = globals()[hp.embed.audio_meta_class]
+    audio_meta = audio_meta_class(hp.embed.data_path, hp.embed.meta_path)
     data_loader = DataLoader(audio_meta, hp.embed.batch_size)
 
     # samples
@@ -66,30 +67,37 @@ if __name__ == '__main__':
         session_init=SaverRestore(ckpt) if ckpt else None)
     embedding_pred = OfflinePredictor(pred_conf)
 
-    embedding, similar_speaker_id = embedding_pred(mel_spec)
+    embedding, pred_speaker_id = embedding_pred(mel_spec)
 
     # get a random audio of the predicted speaker.
-    wavfile_similar_speaker = np.array(map(lambda s: audio_meta_train.get_random_audio(s), similar_speaker_id))
+    wavfile_pred_speaker = np.array(map(lambda s: audio_meta_train.get_random_audio(s), pred_speaker_id))
     length = int(hp.signal.duration * hp.signal.sr)
-    wav_similar_speaker = np.array(
+    wav_pred_speaker = np.array(
         map(lambda w: fix_length(read_wav(w, hp.signal.sr, duration=hp.signal.duration), length),
-            wavfile_similar_speaker))
+            wavfile_pred_speaker))
 
     # write audio
     tf.summary.audio('wav', wav, hp.signal.sr, max_outputs=10)
-    tf.summary.audio('wav_most_similar', wav_similar_speaker, hp.signal.sr, max_outputs=10)
+    tf.summary.audio('wav_pred', wav_pred_speaker, hp.signal.sr, max_outputs=10)
 
     # write prediction
     speaker_name = [audio_meta.get_speaker_dict()[sid] for sid in speaker_id]
-    similar_speaker_name = [audio_meta_train.get_speaker_dict()[sid] for sid in similar_speaker_id]
-    prediction = ['{} -> {}'.format(s, p) for s, p in zip(speaker_name, similar_speaker_name)]
+    pred_speaker_name = [audio_meta_train.get_speaker_dict()[sid] for sid in pred_speaker_id]
+
+    meta = [dict((k, audio_meta.meta_dict[sid][k]) for k in audio_meta.target_meta_field()) for sid in speaker_id]
+    pred_meta = [dict((k, audio_meta_train.meta_dict[sid][k]) for k in audio_meta_train.target_meta_field()) for sid in pred_speaker_id]
+    prediction = ['{} ({}) -> {} ({})'.format(s, s_meta, p, p_meta)
+                  for s, p, s_meta, p_meta in zip(speaker_name, pred_speaker_name, meta, pred_meta)]
     tf.summary.text('prediction', tf.convert_to_tensor(prediction))
 
     writer = tf.summary.FileWriter(hp.logdir)
 
     # t-SNE
-    # speaker_name = map(lambda i: audio_meta.speaker_dict[i], speaker_id)
-    plot_embedding(embedding, speaker_id, filename='outputs/embedding-{}.png'.format(hp.case))
+    if hp.embed.meta_field_viz:
+        annotation = map(lambda i: audio_meta.meta_dict[i][hp.embed.target_meta], speaker_id)
+    else:
+        annotation = speaker_name
+    plot_embedding(embedding, annotation, filename='outputs/embedding-{}.png'.format(hp.case))
 
     ## TODO Write embeddings to tensorboard
     # config = projector.ProjectorConfig()

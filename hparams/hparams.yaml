@@ -1,41 +1,38 @@
 ---
-baseline:
+voxceleb_large:
   model:
-    embedding_size: 16
+    hidden_units: 512
   train:
+    batch_size: 128
+    data_path: '/data/public/rw/voxceleb_norm'
+    meta_path: '/data/public/rw/voxceleb/speaker_list.csv'
     num_gpu: 4
+    lr: 0.00005
+  eval:
+    data_path: '/data/public/rw/voxceleb_norm'
   embed:
     batch_size: 512
+    audio_meta_class: CommonVoiceMeta
+    data_path: '/data/public/rw/cv-valid-train/trimmed'
+    meta_path: '/data/public/rw/cv_corpus_v1/cv-valid-train.csv'
+    meta_field_viz: 'gender'
 ---
-baseline_2s:
+voxceleb_large_2s:
   signal:
     duration: 2
+  model:
+    hidden_units: 512
   train:
-    batch_size: 32
+    batch_size: 128
+    data_path: '/data/public/rw/voxceleb_norm'
+    meta_path: '/data/public/rw/voxceleb/speaker_list.csv'
+    num_gpu: 4
+    lr: 0.0001
+  eval:
+    data_path: '/data/public/rw/voxceleb_norm'
   embed:
     batch_size: 512
----
-voxceleb:
-#  model:
-#    hidden_units: 512
-  train:
-    batch_size: 128
-    data_path: '/data/public/rw/voxceleb_resampled/speaker_data'
-    num_gpu: 4
-    lr: 0.00005
-  eval:
-    data_path: '/data/public/rw/voxceleb_resampled/speaker_data'
-  embed:
-    data_path: '/data/public/rw/voxceleb_resampled/speaker_data'
----
-voxceleb_norm:
-  train:
-    batch_size: 128
-    data_path: '/data/public/rw/voxceleb_norm'
-    num_gpu: 4
-    lr: 0.00005
-  eval:
-    data_path: '/data/public/rw/voxceleb_norm'
-  embed:
-#    data_path: '/data/public/rw/voxceleb_norm'
-    data_path: '/voice-vector/datasets/vcc2016_evaluation'
+    audio_meta_class: CommonVoiceMeta
+    data_path: '/data/public/rw/cv-valid-train/trimmed'
+    meta_path: '/data/public/rw/cv_corpus_v1/cv-valid-train.csv'
+    meta_field_viz: 'gender'
