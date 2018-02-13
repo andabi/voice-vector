@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/env python
+import csv
 import fnmatch
+import glob
 import os
 import random
+from datetime import datetime
 
 from tensorpack.dataflow.base import RNGDataFlow
 from tensorpack.dataflow.common import BatchData
 from tensorpack.dataflow.prefetch import PrefetchData
 
-from feature_extract import wav2melspec_db, normalize_db
+from audio import read_wav, crop_random_wav, fix_length
+from audio import wav2melspec_db, normalize_db
 from hparam import hparam as hp
-from prepro import read_wav, crop_random_wav, fix_length, trim_wav
-import glob
 from utils import split_path
-import csv
-from datetime import datetime
 
 
 class DataLoader(RNGDataFlow):

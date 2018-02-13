@@ -3,11 +3,6 @@
 
 
 import tensorflow as tf
-try:
-    from tensorflow.python.ops.data_flow_ops import StagingArea
-except ImportError:
-    pass
-
 from tensorpack.utils import logger
 from tensorpack.input_source.input_source import QueueInput, EnqueueThread
 

@@ -2,19 +2,20 @@
 # !/usr/bin/env python
 
 
-from data_load import DataLoader, VoxCelebMeta, CommonVoiceMeta
-from model import ClassificationModel
-import tensorflow as tf
-from hparam import hparam as hp
 import argparse
+
 import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
 import numpy as np
+import tensorflow as tf
+from sklearn.manifold import TSNE
 from tensorpack.predict.base import OfflinePredictor
 from tensorpack.predict.config import PredictConfig
 from tensorpack.tfutils.sessinit import SaverRestore
-from prepro import read_wav, fix_length
-from tensorflow.contrib.tensorboard.plugins import projector
+
+from data_load import DataLoader, VoxCelebMeta
+from hparam import hparam as hp
+from model import ClassificationModel
+from audio import read_wav, fix_length
 
 
 def plot_embedding(embedding, annotation, filename='outputs/embedding.png'):
@@ -84,22 +85,22 @@ if __name__ == '__main__':
     speaker_name = [audio_meta.get_speaker_dict()[sid] for sid in speaker_id]
     pred_speaker_name = [audio_meta_train.get_speaker_dict()[sid] for sid in pred_speaker_id]
 
-    meta = [dict((k, audio_meta.meta_dict[sid][k]) for k in audio_meta.target_meta_field()) for sid in speaker_id]
-    pred_meta = [dict((k, audio_meta_train.meta_dict[sid][k]) for k in audio_meta_train.target_meta_field()) for sid in pred_speaker_id]
+    meta = [tuple(audio_meta.meta_dict[sid][k] for k in audio_meta.target_meta_field()) for sid in speaker_id]
+    pred_meta = [tuple(audio_meta_train.meta_dict[sid][k] for k in audio_meta_train.target_meta_field()) for sid in pred_speaker_id]
     prediction = ['{} ({}) -> {} ({})'.format(s, s_meta, p, p_meta)
                   for s, p, s_meta, p_meta in zip(speaker_name, pred_speaker_name, meta, pred_meta)]
     tf.summary.text('prediction', tf.convert_to_tensor(prediction))
 
     writer = tf.summary.FileWriter(hp.logdir)
 
-    # t-SNE
+    # visualization of embedding (t-SNE)
     if hp.embed.meta_field_viz:
-        annotation = map(lambda i: audio_meta.meta_dict[i][hp.embed.target_meta], speaker_id)
+        annotation = map(lambda i: audio_meta.meta_dict[i][hp.embed.meta_field_viz], speaker_id)
     else:
-        annotation = speaker_name
+        annotation = meta
     plot_embedding(embedding, annotation, filename='outputs/embedding-{}.png'.format(hp.case))
 
-    ## TODO Write embeddings to tensorboard
+    # TODO Write embeddings to tensorboard
     # config = projector.ProjectorConfig()
     # embedding_conf = config.embeddings.add()
     # embedding_conf.tensor_name = 'embedding/embedding'

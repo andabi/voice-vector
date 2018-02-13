@@ -19,12 +19,11 @@ class ClassificationModel(ModelDesc):
     e = embedding size
     '''
 
-    def __init__(self, num_banks, hidden_units, num_highway, norm_type, embedding_size, num_classes):
+    def __init__(self, num_banks, hidden_units, num_highway, norm_type, num_classes):
         self.num_banks = num_banks
         self.hidden_units = hidden_units
         self.num_highway = num_highway
         self.norm_type = norm_type
-        # self.embedding_size = embedding_size
         self.num_classes = num_classes
 
     def __call__(self):
@@ -36,7 +35,7 @@ class ClassificationModel(ModelDesc):
         :param x: shape=(n, t, n_mels)
         :return: embedding. shape=(n, e)
         """
-        # Frame-level embedding
+        # frame-level embedding
         x = tf.layers.dense(x, units=self.hidden_units, activation=tf.nn.relu)  # (n, t, h)
 
         out = conv1d_banks(x, K=self.num_banks, num_units=self.hidden_units, norm_type=self.norm_type,
@@ -54,11 +53,11 @@ class ClassificationModel(ModelDesc):
 
         out = gru(out, self.hidden_units, False)  # (n, t, h)
 
-        # Take the last output
+        # take the last output
         out = out[..., -1]  # (n, h)
 
-        # Embedding
-        out = tf.layers.dense(out, self.num_classes, name='projection')  # (n, c)
+        # embedding
+        out = tf.layers.dense(out, self.num_classes, name='projection')  # (n, e)
         out = tf.identity(out, name="embedding")
 
         return out
@@ -84,7 +83,6 @@ class ClassificationModel(ModelDesc):
         is_training = get_current_tower_context().is_training
         with tf.variable_scope('embedding'):
             self.y = self.embedding(self.x, is_training)  # (n, e)
-        # self.logits = tf.layers.dense(self.y, self.num_classes, name="logits")  # (n, c)
         self.pred = tf.to_int32(tf.argmax(self.y, axis=1), name='prediction')
         self.cost = self.loss()
 
