@@ -4,7 +4,7 @@ data_load:
 
 signal:
   sr: 16000
-  duration: 0.5
+  duration: 2
   win_length: 400
   hop_length: 80
   n_fft: 512
@@ -17,6 +17,7 @@ model:
   hidden_units: 128
   num_highway: 2
   norm_type: 'ins'
+  embedding_size: 16  # unused
 
 # Path
 logdir_path: '/data/private/voice-vector/logdir'
@@ -34,19 +35,12 @@ train:
   lr: 0.00005
 
 eval:
-  # path
-  data_path: 'datasets/vcc2016_evaluation'
-
-  # test
   batch_size: 128
+  data_path: 'datasets/vcc2016_evaluation'
 
 embed:
-  # path
-  audio_meta_class: AudioMeta
-  data_path: 'datasets/vcc2016_evaluation'
-  meta_path: ''
-  meta_field_viz: ''
-  batch_size: 512
-
-  # test
   batch_size: 128
+  audio_meta_class: 'CommonVoiceMeta'
+  data_path: '/data/public/rw/cv-valid-train/trimmed'
+  meta_path: '/data/public/rw/cv_corpus_v1/cv-valid-train.csv'
+  meta_field_viz: 'gender'

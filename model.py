@@ -19,7 +19,7 @@ class ClassificationModel(ModelDesc):
     e = embedding size
     '''
 
-    def __init__(self, num_banks, hidden_units, num_highway, norm_type, num_classes):
+    def __init__(self, num_banks, hidden_units, num_highway, norm_type, num_classes, embedding_size):
         self.num_banks = num_banks
         self.hidden_units = hidden_units
         self.num_highway = num_highway

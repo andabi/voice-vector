@@ -1,3 +1,4 @@
+---
 voxceleb_large_4s:
   signal:
     win_length: 512
@@ -15,7 +16,7 @@ voxceleb_large_4s:
     data_path: '/data/public/rw/voxceleb_norm'
   embed:
     batch_size: 512
-    audio_meta_class: CommonVoiceMeta
+    audio_meta_class: 'CommonVoiceMeta'
     data_path: '/data/public/rw/cv-valid-train/trimmed'
     meta_path: '/data/public/rw/cv_corpus_v1/cv-valid-train.csv'
     meta_field_viz: 'gender'

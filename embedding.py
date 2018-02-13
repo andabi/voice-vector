@@ -12,7 +12,7 @@ from tensorpack.predict.base import OfflinePredictor
 from tensorpack.predict.config import PredictConfig
 from tensorpack.tfutils.sessinit import SaverRestore
 
-from data_load import DataLoader, VoxCelebMeta
+from data_load import DataLoader, VoxCelebMeta, CommonVoiceMeta
 from hparam import hparam as hp
 from model import ClassificationModel
 from audio import read_wav, fix_length
