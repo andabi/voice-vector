@@ -21,7 +21,7 @@ class DataLoader(RNGDataFlow):
     def __init__(self, audio_meta, batch_size):
         self.audio_meta = audio_meta
         self.batch_size = batch_size
-        self.speaker_dict = audio_meta.get_speaker_dict()
+        self.speaker_dict = audio_meta.speaker_dict
 
     def get_data(self):
         while True:
@@ -61,9 +61,6 @@ class AudioMeta(object):
             os.path.join(data_path, s))]))  # (k, v) = (speaker_id, speaker_name)
         return speaker_dict
 
-    def get_speaker_dict(self):
-        return self.speaker_dict
-
     def num_speakers(self):
         return len(self.speaker_dict)
 
@@ -102,7 +99,7 @@ class VoxCelebMeta(AudioMeta):
         return meta_dict
 
     def target_meta_field(self):
-        return 'age', 'sex', 'nationality'
+        return 'sex', 'age', 'nationality'
 
 
 class CommonVoiceMeta(AudioMeta):
@@ -135,4 +132,4 @@ class CommonVoiceMeta(AudioMeta):
         return self.audio_dict[speaker_id]
 
     def target_meta_field(self):
-        return 'age', 'gender', 'accent'
+        return 'gender', 'age', 'accent'

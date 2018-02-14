@@ -12,7 +12,7 @@ from tensorpack.predict.base import OfflinePredictor
 from tensorpack.predict.config import PredictConfig
 from tensorpack.tfutils.sessinit import SaverRestore
 
-from data_load import DataLoader, VoxCelebMeta, CommonVoiceMeta
+from data_load import DataLoader, AudioMeta, VoxCelebMeta, CommonVoiceMeta
 from hparam import hparam as hp
 from model import ClassificationModel
 from audio import read_wav, fix_length
@@ -53,7 +53,10 @@ if __name__ == '__main__':
 
     # data loader
     audio_meta_class = globals()[hp.embed.audio_meta_class]
-    audio_meta = audio_meta_class(hp.embed.data_path, hp.embed.meta_path)
+    params = {'data_path': hp.embed.data_path}
+    if hp.embed.meta_path:
+            params['meta_path'] = hp.embed.meta_path
+    audio_meta = audio_meta_class(**params)
     data_loader = DataLoader(audio_meta, hp.embed.batch_size)
 
     # samples
@@ -82,11 +85,11 @@ if __name__ == '__main__':
     tf.summary.audio('wav_pred', wav_pred_speaker, hp.signal.sr, max_outputs=10)
 
     # write prediction
-    speaker_name = [audio_meta.get_speaker_dict()[sid] for sid in speaker_id]
-    pred_speaker_name = [audio_meta_train.get_speaker_dict()[sid] for sid in pred_speaker_id]
+    speaker_name = [audio_meta.speaker_dict[sid] for sid in speaker_id]
+    pred_speaker_name = [audio_meta_train.speaker_dict[sid] for sid in pred_speaker_id]
 
-    meta = [tuple(audio_meta.meta_dict[sid][k] for k in audio_meta.target_meta_field()) for sid in speaker_id]
-    pred_meta = [tuple(audio_meta_train.meta_dict[sid][k] for k in audio_meta_train.target_meta_field()) for sid in pred_speaker_id]
+    meta = [tuple(audio_meta.meta_dict[sid][k] for k in audio_meta.target_meta_field()) for sid in speaker_id] if hp.embed.meta_path else None
+    pred_meta = [tuple(audio_meta_train.meta_dict[sid][k] for k in audio_meta_train.target_meta_field()) for sid in pred_speaker_id] if hp.train.meta_path else None
     prediction = ['{} ({}) -> {} ({})'.format(s, s_meta, p, p_meta)
                   for s, p, s_meta, p_meta in zip(speaker_name, pred_speaker_name, meta, pred_meta)]
     tf.summary.text('prediction', tf.convert_to_tensor(prediction))
@@ -95,9 +98,9 @@ if __name__ == '__main__':
 
     # visualization of embedding (t-SNE)
     if hp.embed.meta_field_viz:
-        annotation = map(lambda i: audio_meta.meta_dict[i][hp.embed.meta_field_viz], speaker_id)
+        annotation = [audio_meta.meta_dict[sid][hp.embed.meta_field_viz] for sid in speaker_id]
     else:
-        annotation = meta
+        annotation = meta if meta else speaker_name
     plot_embedding(embedding, annotation, filename='outputs/embedding-{}.png'.format(hp.case))
 
     # TODO Write embeddings to tensorboard

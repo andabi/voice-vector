@@ -40,7 +40,7 @@ eval:
 
 embed:
   batch_size: 128
-  audio_meta_class: 'CommonVoiceMeta'
-  data_path: '/data/public/rw/cv-valid-train/trimmed'
-  meta_path: '/data/public/rw/cv_corpus_v1/cv-valid-train.csv'
-  meta_field_viz: 'gender'
+  audio_meta_class: 'AudioMeta'
+  data_path: ''
+  meta_path: ''
+  meta_field_viz: ''
