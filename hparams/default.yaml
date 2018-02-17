@@ -1,7 +1,4 @@
 ---
-data_load:
-  num_threads: 64
-
 signal:
   sr: 16000
   duration: 2
@@ -17,7 +14,6 @@ model:
   hidden_units: 128
   num_highway: 2
   norm_type: 'ins'
-  embedding_size: 16  # unused
 
 # Path
 logdir_path: '/data/private/voice-vector/logdir'
@@ -25,7 +21,7 @@ logdir_path: '/data/private/voice-vector/logdir'
 train:
   # path
   data_path: 'datasets/vcc2016_training'
-  meta_path: ''
+  meta_path: ''  # csv meta file of the speakers. optional.
   ckpt_prefix: 'model.ckpt'
   num_gpu: 1
 
@@ -42,5 +38,5 @@ embed:
   batch_size: 128
   audio_meta_class: 'AudioMeta'
   data_path: ''
-  meta_path: ''
-  meta_field_viz: ''
+  meta_path: ''  # csv meta file of the speakers. optional.
+  meta_field_viz: ''  # a field in meta file for t-SNE annotation. optional.
