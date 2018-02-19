@@ -51,17 +51,17 @@ The model architecture is structured as follows.
       * <p align="center"><img src="https://raw.githubusercontent.com/andabi/voice-vector/master/materials/embed_age.png" width="100%"></p>
 
 ## How to run?
-* Requirements
+### Requirements
   * python 2.7
   * tensorflow >= 1.1
   * numpy >= 1.11.1
   * librosa == 0.5.1
   * tensorpack == 0.8.0
-* Settings
+### Settings
   * configurations are set in two YAML files.
   * `hparams/default.yaml` includes default settings for signal processing, model, training, evaluation and embedding.
   * `hparams/hparams.yaml` is for customizing the default settings in each experiment case.
-* Runnable python files
+### Runnable python files
   * `train.py` for training. 
     * run `python train.py some_case_name`
     * remote mode: utilizing more cores of remote server to load data and enqueue more quickly.
@@ -71,7 +71,7 @@ The model architecture is structured as follows.
     * run `python eval.py some_case_name`
   * `embedding.py` for inference and getting embedding vectors.
     * run `python embedding.py some_case_name`
-* Visualizations
+### Visualizations
   * Tensorboard
     * Scalars tab: loss, train accuracy, and eval accuracy.
     * Audio tab: sample audios of input speakers(wav) and predicted speakers(wav_pred)
@@ -81,7 +81,7 @@ The model architecture is structured as follows.
     * outputs/embedding-[some_case_name].png
 
 ## Future works
-* One-shot learning with triplet loss. (continual learning)
+* One-shot learning with triplet loss.
 
 ## References
 * Nagrani, A., Chung, J. S., & Zisserman, A. (2017, June 27). [VoxCeleb: a large-scale speaker identification dataset](http://arxiv.org/abs/1706.08612v1). arXiv.org.
