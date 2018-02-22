@@ -26,9 +26,6 @@ class ClassificationModel(ModelDesc):
         self.norm_type = norm_type
         self.num_classes = num_classes
 
-    def __call__(self):
-        return self.y, self.speaker_id
-
     @auto_reuse_variable_scope
     def embedding(self, x, is_training=False):
         """
@@ -83,7 +80,8 @@ class ClassificationModel(ModelDesc):
         is_training = get_current_tower_context().is_training
         with tf.variable_scope('embedding'):
             self.y = self.embedding(self.x, is_training)  # (n, e)
-        self.pred = tf.to_int32(tf.argmax(self.y, axis=1), name='prediction')
+        self.prob = tf.nn.softmax(self.y, name='probability')
+        self.pred = tf.to_int32(tf.argmax(self.prob, axis=1), name='prediction')
         self.cost = self.loss()
 
         # summaries

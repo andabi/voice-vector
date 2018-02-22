@@ -1,5 +1,5 @@
 ---
-voxceleb:
+voxceleb_large_4s:
   signal:
     win_length: 512
     hop_length: 128
