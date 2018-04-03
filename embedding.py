@@ -2,8 +2,10 @@
 # !/usr/bin/env python
 
 
+import matplotlib
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
 import argparse
-
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -12,7 +14,7 @@ from tensorpack.predict.base import OfflinePredictor
 from tensorpack.predict.config import PredictConfig
 from tensorpack.tfutils.sessinit import SaverRestore
 
-from data_load import DataLoader, AudioMeta, VoxCelebMeta, CommonVoiceMeta
+from data_load import *
 from hparam import hparam as hp
 from model import ClassificationModel
 from audio import read_wav, fix_length
@@ -88,8 +90,8 @@ if __name__ == '__main__':
     speaker_name = [audio_meta.speaker_dict[sid] for sid in speaker_id]
     pred_speaker_name = [audio_meta_train.speaker_dict[sid] for sid in pred_speaker_id]
 
-    meta = [tuple(audio_meta.meta_dict[sid][k] for k in audio_meta.target_meta_field()) for sid in speaker_id] if hp.embed.meta_path else None
-    pred_meta = [tuple(audio_meta_train.meta_dict[sid][k] for k in audio_meta_train.target_meta_field()) for sid in pred_speaker_id] if hp.train.meta_path else None
+    meta = [tuple(audio_meta.meta_dict[sid][k] for k in audio_meta.target_meta_field()) for sid in speaker_id]
+    pred_meta = [tuple(audio_meta_train.meta_dict[sid][k] for k in audio_meta_train.target_meta_field()) for sid in pred_speaker_id]
     prediction = ['{} ({}) -> {} ({})'.format(s, s_meta, p, p_meta)
                   for s, p, s_meta, p_meta in zip(speaker_name, pred_speaker_name, meta, pred_meta)]
     tf.summary.text('prediction', tf.convert_to_tensor(prediction))

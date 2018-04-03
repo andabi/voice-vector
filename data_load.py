@@ -34,8 +34,7 @@ class DataLoader(RNGDataFlow):
 
     def dataflow(self, nr_prefetch=1000, nr_thread=1):
         ds = self
-        if self.batch_size > 1:
-            ds = BatchData(ds, self.batch_size)
+        ds = BatchData(ds, self.batch_size)
         ds = PrefetchData(ds, nr_prefetch, nr_thread)
         return ds
 
@@ -45,21 +44,35 @@ class DataLoader(RNGDataFlow):
         # wav = trim_wav(wav)
         length = int(hp.signal.duration * hp.signal.sr)
         wav = crop_random_wav(wav, length=length)
-        wav = fix_length(wav, length)
+        wav = fix_length(wav, length, mode='reflect')
         return wav  # (t, n_mel)
 
 
 class AudioMeta(object):
-    def __init__(self, data_path):
+    def __init__(self, data_path, meta_path=None):
         self.data_path = data_path
         self.speaker_dict = self._build_speaker_dict(data_path)
+        self.meta_dict = self._build_meta_dict(meta_path)
         self.num_speaker = len(self.speaker_dict)
         self.audio_dict = dict()  # (k, v) = (speaker_id, wavfiles)
 
+    # For each speaker, it has each directory containing wavfiles.
     def _build_speaker_dict(self, data_path):
         speaker_dict = dict(enumerate([s for s in sorted(os.listdir(data_path)) if os.path.isdir(
             os.path.join(data_path, s))]))  # (k, v) = (speaker_id, speaker_name)
         return speaker_dict
+
+    def _build_meta_dict(self, meta_path):
+        meta_dict = {}
+        if meta_path:
+            with open(meta_path, 'rb') as f:
+                reader = csv.DictReader(f)
+                for i, line in enumerate(reader):
+                    meta_dict[i] = line
+        else:
+            # field: filename
+            meta_dict = {k: {'filename': v} for k, v in self.speaker_dict.items()}
+        return meta_dict
 
     def num_speakers(self):
         return len(self.speaker_dict)
@@ -77,6 +90,9 @@ class AudioMeta(object):
         wavfiles = self.get_all_audio(speaker_id)
         wavfile = random.choice(wavfiles)
         return wavfile
+
+    def target_meta_field(self):
+        return 'filename',
 
 
 class VoxCelebMeta(AudioMeta):
@@ -102,27 +118,13 @@ class VoxCelebMeta(AudioMeta):
         return 'sex', 'age', 'nationality'
 
 
-class CommonVoiceMeta(AudioMeta):
+class TestAudioMeta(AudioMeta):
     def __init__(self, data_path, meta_path=None):
-        super(CommonVoiceMeta, self).__init__(data_path=data_path)
-        self.speaker_dict = self._build_speaker_dict(data_path)
-        self.meta_dict = self._build_meta_dict(meta_path)
+        super(TestAudioMeta, self).__init__(data_path=data_path)
 
     def _build_speaker_dict(self, data_path):
         speaker_dict = dict(enumerate([split_path(s)[1] for s in sorted(glob.glob('{}/*.wav'.format(data_path)))]))
         return speaker_dict
-
-    def _build_meta_dict(self, meta_path):
-        # field: filename, text, up_votes, down_votes, age, gender, accent, duration
-        meta_dict = {}
-        if not meta_path:
-            return meta_dict
-
-        with open(meta_path, 'rb') as f:
-            reader = csv.DictReader(f)
-            for i, line in enumerate(reader):
-                meta_dict[i] = line
-        return meta_dict
 
     def get_all_audio(self, speaker_id):
         if speaker_id not in self.audio_dict:
@@ -131,5 +133,8 @@ class CommonVoiceMeta(AudioMeta):
             self.audio_dict[speaker_id] = [wavfile]
         return self.audio_dict[speaker_id]
 
+
+class CommonVoiceMeta(TestAudioMeta):
+    # field: filename, text, up_votes, down_votes, age, gender, accent, duration
     def target_meta_field(self):
         return 'gender', 'age', 'accent'

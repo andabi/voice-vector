@@ -14,10 +14,11 @@ from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2
 
 import librosa
-from audio import wav2melspec_db, read_wav
+from audio import wav2melspec_db, read_wav, normalize_db
 import numpy as np
 import time
 import threading
+import random
 
 host, port = 'csi-cluster-gpu23.dakao.io', '1027'
 
@@ -67,7 +68,7 @@ def _create_rpc_callback(coord):
       response = np.array(result.outputs['prob'].float_val)
       max_prob = np.max(response)
       speaker_id = np.argmax(response)
-      print('{}: {}'.format(speaker_id, max_prob))
+      print('speaker id: {}, prob: {}%'.format(speaker_id, max_prob * 100))
 
     coord.inc_done()
     coord.dec_active()
@@ -76,21 +77,22 @@ def _create_rpc_callback(coord):
 
 
 def do_inference(num_tests, concurrency=1):
-  # dummy audio
-  duration, sr, n_fft, win_length, hop_length, n_mels = 4, 16000, 512, 512, 128, 80
-  filename = librosa.util.example_audio_file()
-  mel = wav2melspec_db(read_wav(filename, sr=sr, duration=duration), sr, n_fft, win_length, hop_length, n_mels)
-  mel = mel.astype(np.float32)
-  mel = np.expand_dims(mel, axis=0)  # single batch
-  n_timesteps = sr / hop_length * duration + 1
-
-  # send request
   channel = implementations.insecure_channel(host, int(port))
   stub = prediction_service_pb2.beta_create_PredictionService_stub(channel)
 
   coord = _Coordinator(num_tests, concurrency)
 
   for _ in range(num_tests):
+    # dummy audio
+    duration, sr, n_fft, win_length, hop_length, n_mels, max_db, min_db = 4, 16000, 512, 512, 128, 80, 35, -55
+    filename = librosa.util.example_audio_file()
+    wav = read_wav(filename, sr=sr, duration=duration)
+    mel = wav2melspec_db(wav, sr, n_fft, win_length, hop_length, n_mels)
+    mel = normalize_db(mel, max_db=max_db, min_db=min_db)
+    mel = mel.astype(np.float32)
+    mel = np.expand_dims(mel, axis=0)  # single batch
+    n_timesteps = sr / hop_length * duration + 1
+
     # build request
     request = predict_pb2.PredictRequest()
     request.model_spec.name = 'voice_vector'
@@ -99,11 +101,11 @@ def do_inference(num_tests, concurrency=1):
 
     coord.throttle()
 
-    # asynchronous response (recommended. use this.)
+    # send asynchronous response (recommended. use this.)
     result_future = stub.Predict.future(request, 10.0)  # timeout
     result_future.add_done_callback(_create_rpc_callback(coord))
 
-    # synchronous response (NOT recommended)
+    # send synchronous response (NOT recommended)
     # result = stub.Predict(request, 5.0)
 
   coord.wait_all_done()
