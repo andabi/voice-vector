@@ -40,3 +40,4 @@ embed:
   data_path: ''
   meta_path: ''  # csv meta file of the speakers. optional.
   meta_field_viz: ''  # a field in meta file for t-SNE annotation. optional.
+  num_gpu: 4

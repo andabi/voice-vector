@@ -20,7 +20,7 @@ from model import ClassificationModel
 from audio import read_wav, fix_length
 
 
-def plot_embedding(embedding, annotation, filename='outputs/embedding.png'):
+def plot_embedding(embedding, annotation=None, filename='outputs/embedding.png'):
     reduced = TSNE(n_components=2).fit_transform(embedding)
     plt.figure(figsize=(20, 20))
     max_x = np.amax(reduced, axis=0)[0]
@@ -31,11 +31,12 @@ def plot_embedding(embedding, annotation, filename='outputs/embedding.png'):
     plt.scatter(reduced[:, 0], reduced[:, 1], s=20, c=["r"] + ["b"] * (len(reduced) - 1))
 
     # Annotation
-    for i in range(embedding.shape[0]):
-        target = annotation[i]
-        x = reduced[i, 0]
-        y = reduced[i, 1]
-        plt.annotate(target, (x, y))
+    if annotation:
+        for i in range(embedding.shape[0]):
+            target = annotation[i]
+            x = reduced[i, 0]
+            y = reduced[i, 1]
+            plt.annotate(target, (x, y))
 
     plt.savefig(filename)
     # plt.show()
@@ -70,7 +71,9 @@ if __name__ == '__main__':
         model=model,
         input_names=['x'],
         output_names=['embedding/embedding', 'prediction'],
-        session_init=SaverRestore(ckpt) if ckpt else None)
+        session_init=SaverRestore(ckpt) if ckpt else None,
+    )
+
     embedding_pred = OfflinePredictor(pred_conf)
 
     embedding, pred_speaker_id = embedding_pred(mel_spec)
@@ -102,7 +105,8 @@ if __name__ == '__main__':
     if hp.embed.meta_field_viz:
         annotation = [audio_meta.meta_dict[sid][hp.embed.meta_field_viz] for sid in speaker_id]
     else:
-        annotation = meta if meta else speaker_name
+        # annotation = meta if meta else speaker_name
+        annotation = None
     plot_embedding(embedding, annotation, filename='outputs/embedding-{}.png'.format(hp.case))
 
     # TODO Write embeddings to tensorboard

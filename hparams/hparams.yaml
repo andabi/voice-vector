@@ -35,6 +35,6 @@ voxceleb_large_4s:
   embed:
     batch_size: 1024
     audio_meta_class: 'TestAudioMeta'
-    data_path: '/data/public/rw/IU/v_app_split'
+    data_path: '/data/public/rw/IU/melon_radio_season2_split'
 #    meta_path: '/data/public/rw/cv_corpus_v1/cv-valid-train.csv'
 #    meta_field_viz: 'gender'
