@@ -1,0 +1,43 @@
+---
+signal:
+  sr: 16000
+  duration: 2
+  win_length: 400
+  hop_length: 80
+  n_fft: 512
+  n_mels: 80
+  max_db: 35
+  min_db: -55
+
+model:
+  num_banks: 8
+  hidden_units: 128
+  num_highway: 2
+  norm_type: 'ins'
+
+# Path
+logdir_path: '/data/private/voice-vector/logdir'
+
+train:
+  # path
+  data_path: 'datasets/vcc2016_training'
+  meta_path: ''  # csv meta file of the speakers. optional.
+  ckpt_prefix: 'model.ckpt'
+  num_gpu: 1
+
+  # train
+  batch_size: 128
+  steps_per_epoch: 100
+  lr: 0.00005
+
+eval:
+  batch_size: 128
+  data_path: 'datasets/vcc2016_evaluation'
+
+embed:
+  batch_size: 128
+  audio_meta_class: 'AudioMeta'
+  data_path: ''
+  meta_path: ''  # csv meta file of the speakers. optional.
+  meta_field_viz: ''  # a field in meta file for t-SNE annotation. optional.
+  num_gpu: 4
