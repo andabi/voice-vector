@@ -2,7 +2,7 @@
 
 ## Subtitle: which of the Hollywood stars is most similar to my voice?
 >* Authors: Dabi Ahn(andabi412@gmail.com), [Noah Jung](https://github.com/giallo41), [Jujin Lee](https://github.com/zeze-zzz) and [Kyubyong Park](https://github.com/Kyubyong)
->* [Check out your voice!](https://voice-vector-web.andabi.me/)
+>* [Demo: Check out who your voice is like!](https://voice-vector-web.andabi.me/)
 
 ## Prologue
 Everyone has their own voice.
