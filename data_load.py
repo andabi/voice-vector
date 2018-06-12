@@ -9,7 +9,7 @@ from datetime import datetime
 
 from tensorpack.dataflow.base import RNGDataFlow
 from tensorpack.dataflow.common import BatchData
-from tensorpack.dataflow.prefetch import PrefetchData
+from tensorpack.dataflow import PrefetchData
 
 from audio import read_wav, crop_random_wav, fix_length
 from audio import wav2melspec_db, normalize_db
