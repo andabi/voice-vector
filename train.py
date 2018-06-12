@@ -11,7 +11,7 @@ from tensorpack.callbacks.base import Callback
 from tensorpack.callbacks.saver import ModelSaver
 from tensorpack.dataflow.common import BatchData
 from tensorpack.dataflow.common import TestDataSpeed
-from tensorpack.dataflow.prefetch import PrefetchData
+from tensorpack.dataflow import PrefetchData
 from tensorpack.dataflow.remote import RemoteDataZMQ
 from tensorpack.tfutils.sessinit import SaverRestore
 from tensorpack.train.interface import TrainConfig
