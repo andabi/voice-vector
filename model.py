@@ -51,7 +51,7 @@ class ClassificationModel(ModelDesc):
         out = gru(out, self.hidden_units, False)  # (n, t, h)
 
         # take the last output
-        out = out[..., -1]  # (n, h)
+        out = out[..., -1, :]  # (n, h)
 
         # embedding
         out = tf.layers.dense(out, self.num_classes, name='projection')  # (n, e)
